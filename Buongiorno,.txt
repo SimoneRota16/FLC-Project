@@ -1,0 +1,41 @@
+Buongiorno, 
+
+Il progetto è disponibile.
+Ho già mandato delle info ad altri tuoi colleghi, ti lascio qui sotto questi dettagli, così hai già qualche informazione in più su cosa mi aspetto.
+
+The choice of the code you will harden is yours. 
+If you have any application written in C/C++ (ideally also Rust, but we discourage it because ASPIS for Rust is currently under development), you can use that. Otherwise, you can write ad-hoc so-called microbenchmarks to stress specific features of the ASPIS compiler (you can find more information on its functioning in this article: https://dl.acm.org/doi/10.1145/3660524), or use benchmarks that are publicly available (just make sure that licensing allows its use, even better if they allow us to use it into the ASPIS repository). Clearly, the number of benchmarks to harden depends on their complexity. So, once you have identified them, we can discuss whether they are sufficient for the project or not. 
+New note on LLM from this year: you can do whatever you want with IA even the whole project. 
+Anyhow, you have to declare in the final report whether you have used LLMs and for what purpose.
+Il lavoro lo potete svolgere per la maggior parte in autonomia per quel che mi riguarda.
+Però se avete domande o volete condividere degli aggiornamenti con noi potete contattarci senza problemi. 
+
+A presto,
+Davide Baroffio
+PhD Student in Information Technology, DEIB, Politecnico di Milano
+________________________________________
+From: Alberto Rotolo <alberto.rotolo@mail.polimi.it>
+Sent: 29 October 2026 11:28
+To: Davide Baroffio <davide.baroffio@polimi.it>; Emilio Corigliano <emilio.corigliano@polimi.it>
+Subject: Richiesta informazioni – progetto FLC “Harden a C application with ASPIS” 
+ 
+Gentili Ing. Baroffio e Ing. Corigliano,
+ 
+siamo Alberto Rotolo e Simone Rota, studenti del corso di Formal Languages and Compilers (A.A. 2026/27), e siamo interessati a svolgere insieme il progetto “Harden a C application with ASPIS”.
+ 
+Prima di iscriverci vorremmo capire meglio come è organizzato il progetto: come si svolge di solito il lavoro, da dove ci consigliate di partire e che cosa vi aspettate come risultato finale.
+ 
+Vi chiediamo inoltre come avviene la consegna: oltre al codice e a un’eventuale relazione, è prevista una presentazione o una discussione orale finale? E come viene assegnato il voto: è unico per il gruppo o individuale, e quali aspetti contano di più nella valutazione?
+ 
+Infine, vorremmo sapere se è consentito usare strumenti basati su LLM durante lo sviluppo e se va dichiarato nella relazione. Ci sarebbe utile anche una stima indicativa del lavoro richiesto e sapere se sono previsti momenti di confronto intermedi con voi.
+ 
+Vi ringraziamo in anticipo per la disponibilità.
+ 
+Cordiali saluti,
+Alberto Rotolo
+Simone Rota
+
+
+
+
+"Quando siete pronti facciamo una call dove ci spiegate quel che avete fatto. In più, dovete redarre un report che ci serve come reference per la valutazione"

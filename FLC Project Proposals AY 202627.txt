@@ -1,0 +1,250 @@
+FLC Project Proposals AY 2026/27
+How projects work:
+To enroll in a project, write to the contact(s) (supervisor(s)) for the project, adding me (daniele.cattaneo<at>polimi.it) in CC. There are no deadlines for choosing a project. Note that your request may be refused if the project has already been taken.
+Delivery of the project can be done at any time.
+When you deliver the project, its grade will be registered as a laboratory grade in the next exam call you are enrolled in.
+The project grade expires after a calendar year (365 days) like a laboratory grade.
+
+Shared multi-course projects
+It is possible to share the FLC project with other related courses. The courses for which this is possible are Embedded Systems (ES) and Code Optimization and Transformation (COT). Project sharing may not be available for all projects, and may involve an increase of the project’s scope, depending on the project supervisor’s judgment. Ask the project contact and the other course’s teacher for specific arrangements.
+
+More projects are coming
+Further projects will be published in the next weeks and months! So if nothing here tickles your fancy you can come back to this page later.
+Topic: Miosix
+Miosix (https://miosix.org/) is a C++-based real-time embedded operating system targeting 32-bit microcontrollers with more than 32 KB of RAM and Flash such as those in the STM32 line. Miosix implements full preemptive multitasking and Posix support, facilitating application development compared to other alternatives.
+
+Due to the peculiarities of Miosix, it requires a customized version of GCC with modifications to the C and C++ standard library which enable better integration with the OS.
+
+Available Miosix project are found at this page:
+Miosix Project Proposals 2026/27
+Topic: Modelica
+Modelica is a language for continuous systems simulation. The user of the language writes a description of a physical system in the form of differential equations, which are then compiled into a simulation of that system. Modelica is object-oriented, enabling the construction of a model through composition of pre-made components available in a standard library.
+
+MARCO (https://github.com/marco-compiler/marco) is a next-generation Modelica compiler that aims to maximize the performance of compilation and simulation, taking advantage of novel state-of-the-art algorithms and approaches.
+
+Warning: MARCO is a complex project with strict coding standards. These projects are for people who are more expert at programming, not for beginners. Hence, not all students may be admitted to these projects. To compensate for this extra requirement, I will award 2 bonus points to the theory exam as well when you pass the project, if you are a student of my section.
+Runtime modification of non-structural parameters
+The Modelica language allows for parameters to be declared within a system of differential equations. Non-structural parameters (i.e., the ones not influencing the structure of the system) should be modifiable without recompiling the source code.
+The goal of the project is twofold. The first part requires non-structural parameters to be properly recognized. The second part requires modifying both the code generation and runtime environment to avoid the propagation of their value, and, instead, expect them as a possible input to the simulation binary.
+
+Requirements: Expert knowledge of the C++ language
+Nr. students: 1
+Possibility of extending into a master thesis: Yes
+Contact: michele.scuttari@polimi.it
+VSCode Extension for MARCO
+This project aims to improve the usability of the MARCO compiler by integrating it into Visual Studio Code through a dedicated plugin. The goal is to provide Modelica developers with a smooth workflow in which Modelica models can be compiled directly from the editor. The plugin should detect the MARCO compiler, trigger compilations for selected Modelica files or projects, present build status, and display diagnostics using VS Code’s standard problem interface. The overall objective is to create an environment where editing a model and compiling it with MARCO feels immediate, coherent, and fully integrated into the development experience.
+The project involves the exploration of the VS Code extension API, the structure of the MARCO compilation pipeline, and the format of its diagnostics. It also includes designing a communication path between the editor and the compiler, documenting installation and usage, and explaining the extension’s internal architecture. In addition, modifications to the MARCO compiler may be needed to expose the necessary information.
+
+Requirements: Expert system-design skills + Familiarity with VSCode and willingness to explore its APIs & required languages
+Nr. students: 1
+Possibility of extending into a master thesis: No
+Contact: michele.scuttari@polimi.it
+MARCO on Windows
+The MARCO compiler is currently developed and primarily tested on Unix-like systems. The goal of this project is to enable native support for building, running, and developing MARCO on the Windows platform. This involves analyzing the existing build system, dependencies, and toolchain assumptions, and adapting them to work correctly with Windows environments. The final outcome should be the creation of a Jenkins configuration for automated compilation and testing.
+Requirements: Good system-level knowledge, CMake knowledge
+Nr. students: 1
+Possibility of extending into a master thesis: No
+Contact: michele.scuttari@polimi.it
+MARCO on embedded systems with Miosix
+The MARCO compiler currently targets desktop environments, where simulations are executed with relatively abundant computational resources. The goal of this project is to enable the execution of MARCO-generated simulation code on resource-constrained embedded systems running the Miosix OS kernel. This involves analyzing the structure and dependencies of the generated code, adapting it to operate within the constraints of an embedded environment, and integrating it into a Miosix-based application. The final outcome should be a working prototype demonstrating a Modelica model compiled with MARCO and executed on an embedded platform, along with an evaluation of performance and limitations.
+
+Requirements: Medium-level C++ language, Familiarity with bare metal deployments
+Nr. students: 1
+Possibility of extending into a master thesis: No
+Contact: michele.scuttari@polimi.it
+Model flattening in MLIR
+MARCO currently relies on a BaseModelica MLIR dialect to represent Modelica programs at the intermediate-representation level. The goal of this project is to introduce a dedicated Modelica dialect that more directly reflects the high-level structure of the Modelica language, and to implement model flattening as a compilation phase that lowers component connections into the actual set of array-aware variables and DAEs. The work requires careful handling of Modelica semantics to ensure that the flattened model is functionally equivalent to the original one. The final outcome will be a clear separation between high-level and low-level representations of Modelica models within MARCO.
+Requirements: Expert knowledge of the C++ language
+Nr. students: 1
+Possibility of extending into a master thesis: Yes
+Contact: michele.scuttari@polimi.it
+Topic: Compilers for fault-tolerance
+ASPIS (from the ancient Greek Ἀσπίς Aspís, shield) is a state-of-the-art LLVM-based tool that hardens arbitrary code against radiation-induced soft errors.
+It provides data and control-flow graph protection, implementing multiple Software-Implemented Hardware Fault Tolerance (SIHFT) techniques.
+Harden a C application with ASPIS
+Goals: 
+Protect one or more C applications (either your own or some pre-defined benchmarks) with ASPIS.
+Run fault injection to verify that the code is protected 
+Integrate the new application into ASPIS’s main branch for regression testing
+
+Requirements: Knowledge of C++
+Nr. students: 1 or 2 (can be assigned to multiple groups)
+Possibility of extending into a master thesis: No
+Contact: davide.baroffio@polimi.it, emilio.corigliano@polimi.it
+
+ASPIS-compilant libc 
+Can standard library functions be safely used in software protected by compiler-based fault-tolerance techniques? This project aims to develop a lightweight libc subset compatible with ASPIS instrumentation. Students will implement and adapt commonly used library routines so that they can be analyzed and protected by ASPIS, with particular attention to embedded systems constraints, portability, and predictable behavior. 
+
+Requirements: Knowledge of C++
+Nr. students: 1 or 2 (can be assigned to multiple groups)
+Possibility of extending into a master thesis: No
+Contact: emilio.corigliano@polimi.it, davide.baroffio@polimi.it
+
+Implement triplication in ASPIS 
+ASPIS currently supports the detection of data corruption through techniques based on Error Detection by Duplicated Instructions (EDDI). However, duplicating data allows only the detection of faults, not correcting them. The student should modify ASPIS to support compiler-based triplication of user-annotated global variables and perform majority voting when these variables are being read.
+
+Requirements: Knowledge of C++
+Nr. students: 1 or 2
+Possibility of extending into a master thesis: Maybe
+Contact: emilio.corigliano@polimi.it
+
+Full-fledged TMR into ASPIS 
+ASPIS currently supports the detection of data corruption through techniques based on Error Detection by Duplicated Instructions (EDDI). However, duplicating data allows only the detection of faults, not correcting them. Unlike the previous project, in this case we want to triplicate the entirety of the program, similarly to what EDDI does, but with 3 replicas instead of 2.
+
+Requirements: Knowledge of C++
+Nr. students: 1 or 2
+Possibility of extending into a master thesis: Yes
+Contact: davide.baroffio@polimi.it
+
+Compiler-assisted Watchdog for Control-Flow Checking 
+Hardware watchdogs are used to verify whether a program is executing some specific workload. However, such a scheme doesn't necessarily tell us whether the application has taken an incorrect control-flow path. Can we integrate SIHFT Control-Flow Checking (CFC) schemes with software watchdog or hardware watchdog instrumentation primitives to enhance fault tolerance?
+
+Requirements: Knowledge of C++
+Nr. students: 1 or 2
+Possibility of extending into a master thesis: Yes
+Contact: davide.baroffio@polimi.it
+
+
+Topic: Worst-Case Execution Time optimizers
+The Worst-Case Execution Time (WCET) is a measurement used in critical system analysis to quantify what is the slowest code path in a program. Knowing this code path allows to guarantee dynamic properties on the behavior of the software for application environments where this is especially critical. Think for example of airplane guidance software, where the controls of the plane must respond under a certain time frame to maintain control of the flight.
+New Lavinium heuristics
+Lavinium applies compiler optimizations to reduce the WCET of a program. But the exploration
+space of all the optimization is too large (NP-hard), so we rely on heuristics.
+Goal: develop new optimization exploration heuristics into Lavinium.
+
+Requirements: Knowledge of C++
+Nr. students: 1 to 3 (can be assigned to multiple groups)
+Possibility of extending into a master thesis: Yes
+Contact: davide.baroffio@polimi.it, gabriele.magnani@polimi.it
+Optimize Lavinium compilation via co-routines
+Being implemented in LLVM, Lavinium currently works on a single core, employing a timing analyzer (LLVMTA), that solves the WCET estimation using an ILP solver. 
+Goal: For policies that allow it, make calls to the ILP asynchronous, so that the most computationally-intensive part of Lavinium can be parallelized.
+
+Requirements: Knowledge of C++
+Nr. students: 1 or 2
+Possibility of extending into a master thesis: No
+Contact: davide.baroffio@polimi.it, gabriele.magnani@polimi.it
+Quantifying optimizations impact on WCET
+Optimizations may have non-trivial impact on the WCET of a program. For instance, optimizations that reduce the execution time in the average case could instead increase the WCET.
+Goal: given N predefined compiler optimizations, study their impact on the WCET by analyzing the program’s behaviour before and after the code transformation.
+
+Requirements: Knowledge of C++
+Nr. students: 1 (can be assigned to multiple students)
+Possibility of extending into a master thesis: No
+Contact: federico.reghenzani@polimi.it
+Topic: Compilers for precision tuning
+Approximate computing is the practice of improving the efficiency of an algorithm by changing it in ways that reduce the precision of its outputs. Within the range of approximate computing optimizations available, we focus on *precision tuning*. Precision tuning involves changing the data types used in a program to less precise but more efficient ones, in order to gain some speedup.
+
+TAFFO is a set of LLVM plugins which aims to be a batteries-included solution to the problem of precision tuning, taking care of all steps required from collection of the requirements, analysis of the program, to transformations to the new data type. TAFFO is based on LLVM and therefore it inherits the same modular architecture, which makes it language-independent, extensible and adaptable. It is also opensource and can be downloaded from here: https://github.com/TAFFO-org/TAFFO
+Profile-guided TAFFO refactoring
+TAFFO has recently gained the ability to perform profile-guided precision tuning.
+
+The first goal of the project is to merge profile-guided taffo into the main branch, making sure it still works and does not break any of the existing functionality.
+Branch: https://github.com/TAFFO-org/TAFFO/tree/lev/dynamic_struct
+
+The second goal is to implement in-memory tracking of the min/max/count values for the llvm registers and output them in the end of the program (right now it just prints after every float instruction, and it is not scalable). The difficulty is to figure out how to do it at the llvm level.
+
+Requirements: Knowledge of C++
+Nr. students: 1
+Possibility of extending into a master thesis: No
+Contact: niccolo.nicolosi@polimi.it
+Multiple LLVM version support in TAFFO
+The TAFFO precision tuning tool currently supports only one version of LLVM. It would be useful to support more than one, to improve the usability of the tool
+Goals:
+Modify TAFFO buildable against multiple LLVM versions by adding appropriate compile-time guards and build-system modifications
+
+Requirements: Knowledge of C++
+Nr. students: 1
+Possibility of extending into a master thesis: No
+Contact: niccolo.nicolosi@polimi.it
+Affine-Arithmetic based Value Range Analysis
+TAFFO decides the viable data types for each variable by “simulating” the program, with a key difference: variable values are replaced with ranges. However, simulating a program in this way is too conservative. A solution to this problem is replacing range arithmetic with Affine arithmetic.
+Goals:
+Implement an alternative VRA (Value Range Analysis) pass based on Affine arithmetic
+
+Requirements: Knowledge of C++
+Nr. students: 1
+Possibility of extending into a master thesis: Yes
+Contact: niccolo.nicolosi@polimi.it
+Benchmark fixup party
+TAFFO includes a set of test cases and benchmarks which demonstrate its feature. In the years, some of them have decreased in performance and accumulated unnecessary errors, so it is time for a good cleanup sweep.
+Goals:
+Analyze and annotate the TAFFO benchmark suite, focusing specifically on the AxBench set, to incorporate support for the latest TAFFO version.
+
+Requirements: Knowledge of C++
+Nr. students: 1
+Possibility of extending into a master thesis: No
+Contact: niccolo.nicolosi@polimi.it
+Topic: Type Deduction Analysis in LLVM
+Starting from version 15, the LLVM project introduced opaque pointer types to eliminate redundant pointer bitcasts and reduce IR size and compile time (https://releases.llvm.org/17.0.1/docs/OpaquePointers.html). LLVM finalized the transition to opaque pointers with version 17, where all pointer types are represented by the unique type ptr, losing any information on the type of the pointee.
+
+While this provides a series of advantages, many existing analysis and transformation passes – like for example the precision tuning framework TAFFO and the fault tolerance framework ASPIS – still need this information and are bound to outdated LLVM versions for this reason. We recently developed a dedicated Type Deduction Analysis pass (TDA) to solve this problem by inferring pointee-types from the LLVM-IR. The pass is open source and can be easily integrated in existing LLVM pipelines.
+TDA performance optimization
+TDA was recently developed prioritizing efficacy with respect to performance. For this reason, the current version of the pass can lead to long compile times. With the aim of making TDA usable in real world compilation pipelines, it is necessary to optimize its performance, reducing compile times.
+Goals:
+Profile TDA to identify the most time consuming sections of the code
+Optimize TDA code for reduced compilation times
+
+Requirements: Good knowledge of C++
+Nr. students: 1
+Possibility of extending into a master thesis: No
+Contact: niccolo.nicolosi@polimi.it
+Extensive testing and benchmarking of TDA
+TDA was recently developed and it was tested on a limited set of small programs. To further validate the analysis and make it ready to use in real-world scenarios, it is essential to test TDA on a more extensive set of benchmarks, and fix possibly arising problems.
+Goals:
+Test TDA on extensive benchmarks and correct possible arising problems
+
+Requirements: Knowledge of C++
+Nr. students: 1
+Possibility of extending into a master thesis: No
+Contact: niccolo.nicolosi@polimi.it
+Adding an explicit single-core option to LLVM ARM atomics
+LLVM on ARM always lowers atomic operations by placing overly cautious memory fences. These are added to guarantee proper global memory ordering for multicore systems. Single-core CPUs often used in embedded devices don't need these instructions, which cause excessive memory flushing and significantly reduce performance. The goal of this project is to add a flag to LLVM to disable this behaviour.
+Goals:
+Introduce a flag to disable generation of memory fences in atomics in LLVM
+Test this feature on the EVA embedded operating system
+
+Requirements: Knowledge of C++
+Nr. students: 1
+Possibility of extending into a master thesis: No
+Contact: davide.mor@polimi.it
+Topic: Compilers for Embedded Systems
+CPP coroutines in embedded systems
+Embedded systems often lack large enough amounts of RAM to allow dynamic memory, effectively  breaking high level language features that rely on it, for example C++ standard library lists and strings. 
+One of those features is C++20 coroutines, a language feature that allows writing more maintainable protocols, among other use cases.
+The objective of this project is to understand how C++ coroutine works from the point of view of the compiler, implement a simple userspace communication protocol with them, make sure that such implementation does not use malloc, and has a bounded, statically known, memory usage.
+
+Requirements: Experience with coroutines (e.g: python yield keyword) in any language
+Nr. students: 1
+Possibility of extending into a master thesis: No
+Contact: massimo.fioravanti@polimi.it
+Topic: Continuous Optimization
+LibVersioningCompiler (libVC) is a library for split compilation and continuous optimization, i.e. it allows to tag a function for which multiple executables are to be provided, employing different optimizations.
+The latest version can be obtained from GitHub (https://github.com/skeru/libVersioningCompiler/pull/4).
+Update of LibVersioningCompiler to LLVM 2022
+Goals of the project:
+ Update the library to work with LLVM 22 (current support is at LLVM 20);
+ Test it on HPCG benchmarks (https://www.hpcg-benchmark.org/software/view.html%3Fid=262.html).
+
+Requirements: Knowledge of the C++ language
+Nr. students: 1
+Possibility of extending into a master thesis: No
+Contact: giovanni.agosta@polimi.it 
+Topic: Domain Specific Languages for Machine Learning
+RL is a domain specific compiled language to write reinforcement learning environments. https://github.com/rl-language/rlc/ .
+Adding features to RLC autocomplete support 
+Modern programming languages are expected to provide powerful tooling support, such as editor autocompletion or autoformatting. RLC https://github.com/rl-language/rlc/ is a domain specific language that already has these mentioned tools, but of course they can always be expanded to support more and more functionalities. Students working on this project will learn about compiler data structures, how code editors provide autocompletion and/or code formatting, and then will implement a feature of their choice among a list of possible ones.
+
+Requirements: Basic of the C++ language
+Nr. students: 1
+Possibility of extending into a master thesis: No
+Contact: massimo.fioravanti@polimi.it
+Topic: Structured natural language processing
+While machine learning techniques such as LLMs have emerged as the best technique for natural language processing, their non deterministic nature makes them poorly suited for situations in which one wants to parse non ambiguous structured natural language. In those situations, traditional parsing techniques remain relevant.
+Semantic analysis of natural language board game rules
+Board games rulebooks are effectively describing a program that must be executed by the players of the game as if they were a machine. Properly written rules therefore must be precise enough to fully describe a program. In this project students will expand an experimental semantic analyzer to support more semantical constructs that appear in natural language game rulebooks by using the techniques seen in class. If a student has a particular interest in specific kinds of games (or any other kind of structured natural language document in general), the project can be adapted to focus on the constructs that appear in those documents. If a student has a particular interest in LLMs, the project can be adapted to include a quantitative comparison between LLMs techniques and compiler techniques.
+
+Requirements: None
+Nr. students: 1
+Possibility of extending into a master thesis: Yes
+Contact: massimo.fioravanti@polimi.it 
