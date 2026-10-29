@@ -1,0 +1,90 @@
+[[tests]]
+test_name = "c_aes128"
+source_file = "c/applications/aes128.c"
+
+[[tests]]
+test_name = "c_bst_dict"
+source_file = "c/applications/bst_dict.c"
+
+[[tests]]
+test_name = "c_expr_vm"
+source_file = "c/applications/expr_vm.c"
+
+[[tests]]
+test_name = "c_fft"
+source_file = "c/applications/fft.c"
+add_compiler_flags = "-lm"
+
+[[tests]]
+test_name = "c_huffman"
+source_file = "c/applications/huffman.c"
+
+[[tests]]
+test_name = "c_lu_solve"
+source_file = "c/applications/lu_solve.c"
+add_compiler_flags = "-lm"
+
+[[tests]]
+test_name = "c_pid_control"
+source_file = "c/applications/pid_control.c"
+
+[[tests]]
+test_name = "c_sobel"
+source_file = "c/applications/sobel.c"
+
+[[tests]]
+test_name = "c_globals_pointers"
+source_file = "c/language_features/globals_pointers.c"
+
+[[tests]]
+test_name = "c_struct_by_value"
+source_file = "c/language_features/struct_by_value.c"
+
+[[tests]]
+test_name = "c_callbacks_libc"
+source_file = "c/language_features/callbacks_libc.c"
+
+[[tests]]
+test_name = "c_varargs"
+source_file = "c/language_features/varargs.c"
+
+[[tests]]
+test_name = "c_recursion"
+source_file = "c/language_features/recursion.c"
+
+[[tests]]
+test_name = "c_dynamic_memory"
+source_file = "c/language_features/dynamic_memory.c"
+
+[[tests]]
+test_name = "c_unions_bitfields"
+source_file = "c/language_features/unions_bitfields.c"
+
+[[tests]]
+test_name = "c_float_special"
+source_file = "c/language_features/float_special.c"
+add_compiler_flags = "-lm"
+
+[[tests]]
+test_name = "c_int_arith_edge"
+source_file = "c/language_features/int_arith_edge.c"
+
+[[tests]]
+test_name = "c_lexer_dfa"
+source_file = "c/language_features/lexer_dfa.c"
+
+[[tests]]
+test_name = "c_vla_alloca"
+source_file = "c/language_features/vla_alloca.c"
+
+[[tests]]
+test_name = "c_annotations"
+source_file = "c/language_features/annotations.c"
+
+[[tests]]
+test_name = "c_ctor_tls"
+source_file = "c/language_features/ctor_tls.c"
+
+[[tests]]
+test_name = "c_setjmp_longjmp"
+source_file = "c/language_features/setjmp_longjmp.c"

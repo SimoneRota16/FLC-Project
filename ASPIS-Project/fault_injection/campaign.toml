@@ -1,0 +1,91 @@
+# Fault-injection campaign used for the FLC project report.
+# Paths starting with ~ are expanded on the Linux side (WSL).
+
+[campaign]
+root = ".."                                  # sources are relative to the project root
+output = "~/aspis-project/campaign"          # build products, golden runs, raw results
+aspis = "~/aspis-project/ASPIS"              # ASPIS checkout (master + fixes, see aspis-integration/)
+llvm_bin = "~/aspis-project/toolchain/LLVM-21.1.8-Linux-X64/bin"
+fi = "~/aspis-project/fi/fi"                 # compiled fault_injection/injector/fi.c
+tmp = "/dev/shm/aspis-fi"
+models = ["reg", "branch", "jump"]
+injections = 1000                            # per benchmark x configuration x model
+chunk = 100
+seed = 2026
+timeout_factor = 20                          # hang threshold = 20x the median run time ...
+timeout_min_ms = 300                         # ... but at least 300 ms
+
+# The first configuration is the reference (same pipeline, no protection).
+[[config]]
+name = "baseline"
+flags = "--no-dup --no-cfc"
+
+[[config]]
+name = "EDDI"
+flags = "--eddi --no-cfc"
+
+[[config]]
+name = "sEDDI"
+flags = "--seddi --no-cfc"
+
+[[config]]
+name = "FDSC"
+flags = "--fdsc --no-cfc"
+
+[[config]]
+name = "CFCSS"
+flags = "--no-dup --cfcss"
+
+[[config]]
+name = "RASM"
+flags = "--no-dup --rasm"
+
+[[config]]
+name = "interRASM"
+flags = "--no-dup --inter-rasm"
+
+[[config]]
+name = "RACFED"
+flags = "--no-dup --racfed"
+
+[[config]]
+name = "EDDI+CFCSS"
+flags = "--eddi --cfcss"
+
+[[config]]
+name = "EDDI+RASM"
+flags = "--eddi --rasm"
+
+[[config]]
+name = "EDDI+RACFED"
+flags = "--eddi --racfed"
+
+[[benchmark]]
+name = "aes128"
+source = "benchmarks/applications/aes128.c"
+
+[[benchmark]]
+name = "bst_dict"
+source = "benchmarks/applications/bst_dict.c"
+
+[[benchmark]]
+name = "fft"
+source = "benchmarks/applications/fft.c"
+flags = "-lm"
+
+[[benchmark]]
+name = "huffman"
+source = "benchmarks/applications/huffman.c"
+
+[[benchmark]]
+name = "lu_solve"
+source = "benchmarks/applications/lu_solve.c"
+flags = "-lm"
+
+[[benchmark]]
+name = "pid_control"
+source = "benchmarks/applications/pid_control.c"
+
+[[benchmark]]
+name = "sobel"
+source = "benchmarks/applications/sobel.c"
