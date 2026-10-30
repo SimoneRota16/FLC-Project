@@ -71,8 +71,7 @@ WEB_CSS = """
 /* Layout: one reading column, tables and code scroll inside their own box. */
 :root {
   --bg: #fcfcfb; --fg: #1b1b19; --fg-2: #52514e; --muted: #7a7973; --rule: #e1e0d9;
-  --accent: #256abf; --code-bg: #f1f0ec; --row: #f6f6f3;
-  --fig-light: block; --fig-dark: none;
+  --accent: #256abf; --code-bg: #f1f0ec; --row: #f6f6f3; --fig-bg: #ffffff;
   --serif: "Source Serif 4", "Charter", Georgia, serif;
   --sans: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
   --mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
@@ -80,14 +79,14 @@ WEB_CSS = """
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #1a1a19; --fg: #ecebe7; --fg-2: #c3c2b7; --muted: #8f8e88; --rule: #34342f;
-    --accent: #6da7ec; --code-bg: #24241f; --row: #20201d;
-    --fig-light: none; --fig-dark: block; color-scheme: dark;
+    --accent: #6da7ec; --code-bg: #24241f; --row: #20201d; --fig-bg: #f4f3ef;
+    color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #1a1a19; --fg: #ecebe7; --fg-2: #c3c2b7; --muted: #8f8e88; --rule: #34342f;
-  --accent: #6da7ec; --code-bg: #24241f; --row: #20201d;
-  --fig-light: none; --fig-dark: block; color-scheme: dark;
+  --accent: #6da7ec; --code-bg: #24241f; --row: #20201d; --fig-bg: #f4f3ef;
+  color-scheme: dark;
 }
 body { background: var(--bg); color: var(--fg); font-family: var(--serif); font-size: 17px; line-height: 1.6; }
 .page {
@@ -118,8 +117,8 @@ main a { color: var(--accent); }
 main a:focus-visible, .toc summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 main ul, main ol { padding-left: 1.3rem; }
 main li { margin: 0.3rem 0; }
-code { font-family: var(--mono); font-size: 0.84em; background: var(--code-bg); padding: 0.08em 0.3em; border-radius: 3px; }
-pre { font-family: var(--mono); font-size: 0.8rem; line-height: 1.45; background: var(--code-bg); padding: 0.9rem 1rem; border-radius: 4px; overflow-x: auto; }
+code { font-family: var(--mono); font-variant-ligatures: none; font-size: 0.84em; background: var(--code-bg); padding: 0.08em 0.3em; border-radius: 3px; }
+pre { font-family: var(--mono); font-variant-ligatures: none; font-size: 0.8rem; line-height: 1.45; background: var(--code-bg); padding: 0.9rem 1rem; border-radius: 4px; overflow-x: auto; }
 pre code { background: none; padding: 0; font-size: inherit; }
 .table-wrap { overflow-x: auto; margin: 1.2rem 0 0.4rem; }
 table { border-collapse: collapse; font-family: var(--sans); font-size: 0.8rem; line-height: 1.35; min-width: 100%; font-variant-numeric: tabular-nums; }
@@ -130,11 +129,10 @@ td[style*="right"] { white-space: nowrap; }
 tbody tr { border-bottom: 1px solid var(--rule); }
 tbody tr:nth-child(even) { background: var(--row); }
 figure { margin: 1.8rem 0; }
-figure img { width: 100%; height: auto; border-radius: 4px; }
+/* the figures are drawn on white: in the dark theme they sit on a light card */
+figure img { display: block; width: 100%; height: auto; border-radius: 4px; background: var(--fig-bg); padding: 6px; box-sizing: border-box; }
 .fig-scroll { overflow-x: auto; }
 .fig-scroll.wide img { min-width: 640px; }
-img.fig-light { display: var(--fig-light); }
-img.fig-dark { display: var(--fig-dark); }
 figcaption { font-family: var(--sans); font-size: 0.78rem; color: var(--fg-2); margin-top: 0.5rem; }
 @media (max-width: 480px) { body { font-size: 16px; } }
 """
@@ -165,8 +163,7 @@ def web_page(md_path, out_path):
             width, height = struct.unpack(">II", f.read(24)[16:24])
         # on a phone the figures with several panels scroll instead of shrinking
         wide = " wide" if width > 1.8 * height else ""
-        return ('<div class="fig-scroll%s"><img class="fig-light" src="%s"%s<img class="fig-dark" src="%s" alt="" />'
-                '</div>' % (wide, data_uri(name), rest, data_uri(name + "_dark")))
+        return '<div class="fig-scroll%s"><img src="%s"%s</div>' % (wide, data_uri(name), rest)
     body = re.sub(r'<img src="figures/([a-z_0-9]+)\.svg"([^>]*>)', figure, body)
 
     def table(m):

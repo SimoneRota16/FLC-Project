@@ -2,43 +2,34 @@
 
 All the experiments were run with LLVM 21.1.8 on x86-64 Linux (a 4-core
 virtual machine), with ASPIS `b66a090` ("master") and with the same commit
-plus the patch series of `../aspis-integration/patches` ("patched").
+plus the patches of `../aspis-integration/patches` ("fixed").
 
 ## `compatibility/`
 
-Output of `../scripts/aspis_matrix.py`: one row per build, with the outcome
-(`pass`, `compile-error`, `compile-hang`, `crash`, `false-detect`,
-`mismatch`, `exit-code`, `run-hang`, `skipped`) and a detail.
+Logs of the official ASPIS harness (`pytest test.py -v` in `testing/`, one
+line per build: `test.py::test_aspis[<test>-<cfc>-<data>] PASSED`), gzipped:
 
-| File | Programs | ASPIS |
+| File | ASPIS | Tests |
 |---|---|---|
-| `flc_master.csv` | the 22 benchmarks, 55 combinations each | master |
-| `flc_patched.csv` (`.md`: matrix view) | the 22 benchmarks | patched |
-| `aspis_tests_master.csv` | the 48 tests of `testing/config/tests.toml` | master |
-| `aspis_tests_patched.csv` | the 48 tests | patched |
-| `aspis_suite_with_series.csv` | the 70 tests of `testing/config/tests.toml` after the series (48 + 22, reduced blacklist) | patched |
-| `aspis_blacklisted_*.csv` | the tests with a `black_list`, only `--inter-rasm` and `--racfed`, blacklist ignored | master / patched |
-| `reproducers.md` | `../aspis-integration/reproducers/run.py` | both |
+| `harness_master.log.gz` | master | the 48 tests of `tests.toml` and our 4 applications |
+| `harness_fixed.log.gz` | fixed (patches 0001-0004) | the same |
+
+`../fault_injection/analyze.py --harness` turns them into the tables of
+Section 3 of the report.
 
 ## `fault_injection/`
 
-Output of `../fault_injection/campaign.py` (exported with `export.py`):
+Output of `../fault_injection/campaign.py`, exported with `export.py`:
 
 - `metrics.csv`: one row per application and configuration: size of
-  `.text`, compilation time, consistency checks inserted, instructions
-  executed in the program's code (`dyn_app`) and in total (`dyn_total`),
-  distinct instructions executed, minimum and median run time of 31 runs
-  (wall clock, including the start-up of the process);
+  `.text`, consistency checks inserted by EDDI, instructions executed in the
+  program's own code in the golden run;
 - `outcomes.csv`: one row per application, configuration and fault model:
-  number of experiments per outcome, SDC rate with its 95% Wilson interval,
-  detection rate, crash+hang rate;
-- `raw.csv.gz`: one row per experiment (240,900): application,
-  configuration, chunk, then the columns printed by `fi inject` (`id`,
-  `model`, `pc_off` offset of the target instruction in the text segment,
-  `occurrence`, `target` register / condition code / jump target, `bit`,
-  `injected`, `outcome`, `exit` status, `signal`, `time_us`).
-- `before_fix17/`: the first run of the campaign, before commit 17 of the
-  series (RASM and RACFED did not check the verification blocks of EDDI):
-  `metrics.csv` and `outcomes.csv` for all the configurations, of which only
-  EDDI+RASM and EDDI+RACFED differ from the final run, and `raw.csv.gz` with
-  the 43,800 experiments of these two (compared in Section 6.2 of the report).
+  number of experiments per outcome, SDC rate with its 95% Wilson interval;
+- `raw.csv.gz`: one row per experiment: application, configuration, chunk,
+  then the columns printed by `fi inject` (`id`, `model`, `pc_off` offset of
+  the target instruction in the text segment, `occurrence`, `target`
+  register or condition code, `bit`, `injected`, `outcome`, `exit` status,
+  `signal`, `time_us`);
+- `before_fix/`: the same files for EDDI+RASM compiled with ASPIS without
+  patch 0003 (bug 3 of the report).

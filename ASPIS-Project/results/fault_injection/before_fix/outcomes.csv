@@ -1,0 +1,9 @@
+application,config,model,n,masked,sdc,detected_data,detected_cfc,crash,hang,not_injected,sdc_rate,sdc_lo,sdc_hi
+aes128,EDDI+RASM,branch,1000,14,104,454,427,1,0,0,0.10400,0.08657,0.12446
+aes128,EDDI+RASM,reg,1000,837,2,15,5,141,0,0,0.00200,0.00055,0.00726
+fft,EDDI+RASM,branch,1000,50,76,597,277,0,0,0,0.07600,0.06115,0.09410
+fft,EDDI+RASM,reg,1000,827,0,25,4,144,0,0,0.00000,0.00000,0.00383
+huffman,EDDI+RASM,branch,1000,16,139,474,371,0,0,0,0.13900,0.11894,0.16183
+huffman,EDDI+RASM,reg,1000,817,2,25,6,150,0,0,0.00200,0.00055,0.00726
+pid_control,EDDI+RASM,branch,1000,35,102,554,309,0,0,0,0.10200,0.08474,0.12231
+pid_control,EDDI+RASM,reg,1000,839,0,18,7,136,0,0,0.00000,0.00000,0.00383

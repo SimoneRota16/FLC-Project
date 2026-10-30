@@ -18,21 +18,12 @@
  *             <tmp_dir> -- <program> [args]
  *       Runs <count> experiments. Each one picks a dynamic instruction
  *       uniformly at random (i.e. a random point in time), stops the program
- *       right before that instruction, corrupts the processor state according
- *       to <model>, detaches and classifies the outcome. One CSV line per
- *       experiment is written to stdout. The program is stopped with a
- *       hardware execution breakpoint that counts the executions of the
- *       target instruction (perf_event_open with sigtrap, Linux >= 5.13), or
- *       with a software breakpoint if it is not available (or FI_NO_HW=1).
+ *       right before that instruction with a software breakpoint, corrupts
+ *       the processor state according to <model>, detaches and classifies
+ *       the outcome. One CSV line per experiment is written to stdout.
  *       Models:
  *         reg     single bit-flip in one of the 16 general purpose registers
  *         branch  the outcome of a conditional jump is inverted
- *         jump    the program counter is set to a random instruction of the
- *                 executable (illegal control-flow transfer)
- *
- *   fi bench <runs> -- <program> [args]
- *       Runs the program <runs> times without tracing and prints the
- *       minimum and median wall-clock time in microseconds.
  *
  * The program under test must report the ASPIS detections on stderr with
  * "FAULT_DETECTED: DataCorruption" (EDDI family) or
@@ -50,27 +41,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <linux/hw_breakpoint.h>
-#include <linux/perf_event.h>
 #include <sys/personality.h>
 #include <sys/ptrace.h>
 #include <sys/stat.h>
-#include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/user.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
-#ifndef TRAP_PERF
-#define TRAP_PERF 6 /* si_code of the SIGTRAP sent by a perf event with sigtrap */
-#endif
-
 #define KIND_OTHER 0
 #define KIND_JCC 1
-
-/* set to 0 by the first perf_event_open failure, or with FI_NO_HW=1 */
-static int use_hw_breakpoints = 1;
 
 typedef struct {
     uint64_t off;   /* offset from the start of the executable text */
@@ -414,11 +395,12 @@ static int wait_with_timeout(pid_t pid, int *status, uint64_t timeout_us) {
     }
 }
 
-/* Software method: an int3 is written at pc, and every time it is hit it is
- * removed, the instruction is single-stepped and the int3 is written back,
- * until the (occurrence+1)-th execution of pc. Returns 1 when the child is
- * stopped right before that execution, 0 if it terminated before. */
-static int run_to_target_sw(pid_t pid, uint64_t pc, uint64_t occurrence, int *status) {
+/* Stops the child right before the (occurrence+1)-th execution of pc. An int3
+ * (0xcc) is written at pc; every time it is hit, the original byte is put
+ * back, the instruction is single-stepped and the int3 is written again.
+ * Returns 1 when the child is stopped right before that execution, 0 if it
+ * terminated before reaching it. */
+static int run_to_target(pid_t pid, uint64_t pc, uint64_t occurrence, int *status) {
     struct user_regs_struct regs;
     long orig = ptrace(PTRACE_PEEKTEXT, pid, (void *)pc, NULL);
     long patched = (orig & ~0xffL) | 0xcc;
@@ -455,60 +437,6 @@ static int run_to_target_sw(pid_t pid, uint64_t pc, uint64_t occurrence, int *st
     }
 }
 
-/* Hardware method: an execution breakpoint on pc (debug registers, through
- * perf_event_open) counts the executions without stopping the child, and
- * sends it a synchronous SIGTRAP when the (occurrence+1)-th one is about to
- * happen. About 3x faster than the software method under a hypervisor, where
- * every ptrace stop is expensive. Returns 1 when the child is stopped right
- * before that execution, 0 if it terminated before, -1 if hardware
- * breakpoints are not available. */
-static int run_to_target_hw(pid_t pid, uint64_t pc, uint64_t occurrence, int *status) {
-    struct perf_event_attr attr;
-    struct user_regs_struct regs;
-    siginfo_t si;
-    int fd, sig = 0;
-
-    memset(&attr, 0, sizeof(attr));
-    attr.type = PERF_TYPE_BREAKPOINT;
-    attr.size = sizeof(attr);
-    attr.bp_type = HW_BREAKPOINT_X;
-    attr.bp_addr = pc;
-    attr.bp_len = sizeof(long);
-    attr.sample_period = occurrence + 1;
-    attr.sigtrap = 1;
-    attr.remove_on_exec = 1; /* required by sigtrap; the child already exec'd */
-    attr.exclude_kernel = 1;
-    attr.exclude_hv = 1;
-    fd = (int)syscall(SYS_perf_event_open, &attr, pid, -1, -1, PERF_FLAG_FD_CLOEXEC);
-    if (fd < 0)
-        return -1;
-    for (;;) {
-        if (ptrace(PTRACE_CONT, pid, NULL, (void *)(long)sig) < 0)
-            die("PTRACE_CONT");
-        sig = 0;
-        if (waitpid(pid, status, 0) < 0)
-            die("waitpid");
-        if (WIFEXITED(*status) || WIFSIGNALED(*status)) {
-            close(fd);
-            return 0; /* target never reached */
-        }
-        if (WSTOPSIG(*status) != SIGTRAP) {
-            sig = WSTOPSIG(*status);
-            continue;
-        }
-        if (ptrace(PTRACE_GETSIGINFO, pid, NULL, &si) == 0 && si.si_code == TRAP_PERF) {
-            close(fd); /* removes the breakpoint */
-            ptrace(PTRACE_GETREGS, pid, NULL, &regs);
-            if (regs.rip != pc) {
-                fprintf(stderr, "fi: hardware breakpoint stopped at %llx instead of %lx\n",
-                        regs.rip, (unsigned long)pc);
-                exit(100);
-            }
-            return 1;
-        }
-    }
-}
-
 static int cmd_inject(const char *prof_path, const char *golden_path, const char *model,
                       uint64_t seed, long count, long timeout_ms, const char *tmp_dir, char **argv) {
     Profile prof;
@@ -516,18 +444,15 @@ static int cmd_inject(const char *prof_path, const char *golden_path, const char
     size_t golden_len;
     char *golden = read_file(golden_path, &golden_len);
     int m_reg = strcmp(model, "reg") == 0, m_branch = strcmp(model, "branch") == 0;
-    int m_jump = strcmp(model, "jump") == 0;
     long e;
 
     if (!golden)
         die("read golden output");
-    if (!m_reg && !m_branch && !m_jump) {
+    if (!m_reg && !m_branch) {
         fprintf(stderr, "fi: unknown model %s\n", model);
         return 100;
     }
     load_profile(prof_path, &prof);
-    if (getenv("FI_NO_HW") != NULL)
-        use_hw_breakpoints = 0;
     if (mkdir(tmp_dir, 0755) < 0 && errno != EEXIST)
         die("mkdir tmp_dir");
     if (m_branch && prof.n_jcc == 0) {
@@ -545,21 +470,13 @@ static int cmd_inject(const char *prof_path, const char *golden_path, const char
         const PcInfo *pi = &prof.pcs[idx];
         uint64_t pc = prof.text_lo + pi->off;
         int reg = (int)rng_below(16), bit = (int)rng_below(64);
-        uint64_t jump_to = 0;
         int injected = 0, status = 0, timed_out = 0, reached;
         struct user_regs_struct regs;
         const char *outcome;
         char target[32];
         pid_t pid;
 
-        if (m_jump) {
-            size_t j = (size_t)rng_below(prof.npcs);
-            if (j == idx)
-                j = (j + 1) % prof.npcs;
-            jump_to = prof.text_lo + prof.pcs[j].off;
-            snprintf(target, sizeof(target), "%lx", (unsigned long)prof.pcs[j].off);
-            bit = -1;
-        } else if (m_branch) {
+        if (m_branch) {
             snprintf(target, sizeof(target), "cc%x", pi->cc);
             bit = -1;
         } else {
@@ -568,20 +485,15 @@ static int cmd_inject(const char *prof_path, const char *golden_path, const char
 
         start = now_us();
         pid = spawn(argv, out_path, err_path, 1);
-        reached = use_hw_breakpoints ? run_to_target_hw(pid, pc, occurrence, &status) : -1;
-        if (reached < 0) {
-            use_hw_breakpoints = 0;
-            reached = run_to_target_sw(pid, pc, occurrence, &status);
-        }
+        reached = run_to_target(pid, pc, occurrence, &status);
         if (reached) {
             ptrace(PTRACE_GETREGS, pid, NULL, &regs);
             if (m_reg) {
                 *gpr(&regs, reg) ^= 1ull << bit;
-            } else if (m_branch) {
+            } else {
+                /* jump to the successor that the jcc would not have taken */
                 uint64_t next = pc + (uint64_t)pi->len;
                 regs.rip = jcc_taken(pi->cc, regs.eflags) ? next : next + (uint64_t)pi->rel;
-            } else {
-                regs.rip = jump_to;
             }
             ptrace(PTRACE_SETREGS, pid, NULL, &regs);
             ptrace(PTRACE_DETACH, pid, NULL, NULL);
@@ -622,28 +534,6 @@ static int cmd_inject(const char *prof_path, const char *golden_path, const char
     return 0;
 }
 
-static int cmp_u64(const void *a, const void *b) {
-    uint64_t x = *(const uint64_t *)a, y = *(const uint64_t *)b;
-    return (x > y) - (x < y);
-}
-
-static int cmd_bench(long runs, char **argv) {
-    uint64_t *t = (uint64_t *)calloc((size_t)runs, sizeof(uint64_t));
-    long i;
-    for (i = 0; i < runs; i++) {
-        int status;
-        uint64_t start = now_us();
-        pid_t pid = spawn(argv, "/dev/null", "/dev/null", 0);
-        waitpid(pid, &status, 0);
-        t[i] = now_us() - start;
-    }
-    qsort(t, (size_t)runs, sizeof(uint64_t), cmp_u64);
-    printf("bench runs %ld min_us %lu median_us %lu\n", runs, (unsigned long)t[0],
-           (unsigned long)t[runs / 2]);
-    free(t);
-    return 0;
-}
-
 static char **after_dashes(int argc, char **argv, int from) {
     int i;
     for (i = from; i < argc; i++)
@@ -660,13 +550,10 @@ int main(int argc, char **argv) {
         return cmd_inject(argv[2], argv[3], argv[4], strtoull(argv[5], NULL, 0),
                           strtol(argv[6], NULL, 0), strtol(argv[7], NULL, 0), argv[8],
                           after_dashes(argc, argv, 9));
-    if (argc >= 5 && strcmp(argv[1], "bench") == 0)
-        return cmd_bench(strtol(argv[2], NULL, 0), after_dashes(argc, argv, 3));
     fprintf(stderr,
             "usage:\n"
             "  fi profile <out.prof> <out.stdout> -- <program> [args]\n"
-            "  fi inject <prof> <golden.stdout> reg|branch|jump <seed> <count> <timeout_ms> "
-            "<tmp_dir> -- <program> [args]\n"
-            "  fi bench <runs> -- <program> [args]\n");
+            "  fi inject <prof> <golden.stdout> reg|branch <seed> <count> <timeout_ms> "
+            "<tmp_dir> -- <program> [args]\n");
     return 100;
 }

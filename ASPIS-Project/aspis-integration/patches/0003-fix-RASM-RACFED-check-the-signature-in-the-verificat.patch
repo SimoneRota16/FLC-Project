@@ -1,0 +1,62 @@
+From b09df3d2d83d6116303a838695d97867ffb409f4 Mon Sep 17 00:00:00 2001
+From: Simone Rota <simone.rota16@gmail.com>
+Date: Fri, 30 Oct 2026 01:29:01 +0000
+Subject: [PATCH 3/4] fix(RASM, RACFED): check the signature in the
+ verification blocks of EDDI
+
+RASM and RACFED reset the runtime signature, without checking it, in every
+block whose name contains "verification". The condition was meant for the
+blocks created by the pass itself, but it also matches the VerificationBB
+blocks created by EDDI, which are the successors of most blocks of a
+program hardened with EDDI: a wrong branch or jump into one of them
+re-synchronised the signature and was not detected.
+
+Found by fault injection: with inverted conditional jumps RASM alone left
+0.7% of silent data corruptions, but EDDI combined with RASM left 10.5%, all
+at jumps whose successors were blocks of EDDI where RASM reset the signature
+without checking it. Now only landing pads and the blocks created by RASM
+(RACFED) are exempted.
+---
+ passes/RACFED.cpp | 6 +++++-
+ passes/RASM.cpp   | 7 ++++++-
+ 2 files changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/passes/RACFED.cpp b/passes/RACFED.cpp
+index 967659c..afc1901 100644
+--- a/passes/RACFED.cpp
++++ b/passes/RACFED.cpp
+@@ -221,8 +221,12 @@ void RACFED::checkJumpSignature(BasicBlock &BB,
+   // In this case BB is not the first Basic Block of the function, 
+   // so it has to update RuntimeSig and check it
+   auto FirstNonPHI = BB.getFirstNonPHIIt();
++  // The signature is reset, without checking it, only at the landing pads
++  // (entered while unwinding) and in the blocks created by RACFED itself. The
++  // verification blocks created by EDDI are checked as any other block:
++  // otherwise a wrong branch or jump into one of them is not detected.
+   if ( (FirstNonPHI != BB.end() && isa<LandingPadInst>(FirstNonPHI)) ||
+-     BB.getName().contains_insensitive("verification") ) {
++     BB.getName().starts_with("RACFED_") ) {
+ 
+     if ( BB.getFirstInsertionPt() == BB.end() ) return; // Skip empty/invalid blocks
+ 
+diff --git a/passes/RASM.cpp b/passes/RASM.cpp
+index 16db791..ec6328e 100644
+--- a/passes/RASM.cpp
++++ b/passes/RASM.cpp
+@@ -146,7 +146,12 @@ void RASM::createCFGVerificationBB (  BasicBlock &BB,
+     int subRanPrevVal = SubRanPrevVals.find(&BB)->second;
+     // in this case BB is not the first Basic Block of the function, so it has to update RuntimeSig and check it
+     if (!BB.isEntryBlock()) {
+-        if (isa<LandingPadInst>(BB.getFirstNonPHI()) || BB.getName().contains_insensitive("verification")) {
++        // The signature is reset, without checking it, only at the landing pads
++        // (entered while unwinding) and in the blocks created by RASM itself.
++        // The verification blocks created by EDDI are checked as any other
++        // block: otherwise a wrong branch or jump into one of them, which are
++        // the successors of most blocks when EDDI is applied, is not detected.
++        if (isa<LandingPadInst>(BB.getFirstNonPHI()) || BB.getName().starts_with("RASM_")) {
+           IRBuilder<> BChecker(&*BB.getFirstInsertionPt());
+           BChecker.CreateStore(llvm::ConstantInt::get(IntType, randomNumberBB),&RuntimeSig, true);
+         }
+-- 
+2.43.0
+

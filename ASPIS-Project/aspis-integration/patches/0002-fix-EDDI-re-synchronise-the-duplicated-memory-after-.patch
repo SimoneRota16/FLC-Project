@@ -1,0 +1,165 @@
+From 4e502af2753a94b068eb8cf1e6c131a43b4809e9 Mon Sep 17 00:00:00 2001
+From: Simone Rota <simone.rota16@gmail.com>
+Date: Thu, 29 Oct 2026 23:43:27 +0000
+Subject: [PATCH 2/4] fix(EDDI): re-synchronise the duplicated memory after
+ calls to non-duplicated functions
+
+After a call to a function without a _dup version (e.g. printf), the
+pointee of each pointer argument was copied from the original to the duplicate
+loading and storing a `ptr` (8 bytes), whatever the pointed type was:
+- with a pointer received as parameter and pointing to a string literal (the
+  two copies are the same constant) the store wrote into .rodata and the
+  program crashed (5-line reproducer: show("hello") calling printf("%s"));
+- for objects smaller than 8 bytes it overflowed the duplicate, for larger
+  ones it synchronised only the first 8 bytes.
+Now arguments that the callee cannot write through are skipped, distinct
+allocas/globals are synchronised entirely with a memcpy, and for any other
+pointer the value of its deduced type is copied only if the two copies of the
+pointer differ at run time (otherwise the copy goes to a scratch buffer).
+---
+ passes/EDDI.cpp | 118 +++++++++++++++++++++++++++++++++++++-----------
+ 1 file changed, 92 insertions(+), 26 deletions(-)
+
+diff --git a/passes/EDDI.cpp b/passes/EDDI.cpp
+index b5495e6..4c85cea 100755
+--- a/passes/EDDI.cpp
++++ b/passes/EDDI.cpp
+@@ -10,6 +10,7 @@
+ #include "ASPIS.h"
+ #include "llvm/Demangle/Demangle.h"
+ #include "llvm/ADT/Statistic.h"
++#include "llvm/Analysis/ValueTracking.h"
+ #include "llvm/IR/Attributes.h"
+ #include "llvm/IR/Function.h"
+ #include "llvm/IR/IRBuilder.h"
+@@ -1074,36 +1075,101 @@ void EDDI::compareValues(std::vector<Value *> *CmpInstructions, Value &V1, Value
+   // elements or padding, which can differ between the two copies.
+ }
+ 
++// Returns the size in bytes of the memory object Obj (an alloca or a global
++// variable), or std::nullopt if it is not known at compile time.
++static std::optional<uint64_t> getKnownObjectSize(const Value *Obj,
++                                                  const DataLayout &DL) {
++  if (const auto *AI = dyn_cast<AllocaInst>(Obj)) {
++    std::optional<TypeSize> Size = AI->getAllocationSize(DL);
++    if (Size && !Size->isScalable())
++      return Size->getFixedValue();
++  } else if (const auto *GV = dyn_cast<GlobalVariable>(Obj)) {
++    if (GV->getValueType()->isSized())
++      return DL.getTypeAllocSize(GV->getValueType()).getFixedValue();
++  }
++  return std::nullopt;
++}
+ 
+-// Given an instruction, loads and stores the pointers passed to the
+-// instruction. This is useful in the case I is a CallBase, since the function
+-// called might not be in the compilation unit, and the function called may
+-// modify the content of the pointer passed as argument. This function has the
+-// objective of synchronize pointers after some non-duplicated instruction
+-// execution.
++// Given a call to a function that is not duplicated (e.g. a library function
++// not in the compilation unit, or a function annotated as `exclude`), the
++// callee may modify the memory pointed by the arguments, updating only the
++// original copy of the data. This function re-synchronises the duplicated
++// copies after the call, for the arguments the callee may write through:
++// - if the original and the duplicated objects are distinct allocas or global
++//   variables, the whole original object is copied into the duplicate;
++// - otherwise (e.g. heap memory or a pointer received as parameter) the value
++//   pointed by the argument, as large as its deduced type, is copied only if
++//   the two copies of the pointer differ at run time. When they are equal the
++//   memory is shared (and it may even be read-only, like a string literal),
++//   so the copy is redirected to a scratch buffer and has no effect.
+ void EDDI::fixFuncValsPassedByReference(
+     Instruction &I,
+     IRBuilder<> &B) {
+-  int numOps = I.getNumOperands();
+-  for (int i = 0; i < numOps; i++) {
+-    Value *V = I.getOperand(i);
+-    if (isa<Instruction>(V)) {
+-      Instruction *Operand = cast<Instruction>(V);
+-      Value *Duplicate = getDuplicateValue(Operand, &I);
+-
+-      if (Duplicate != nullptr) {
+-        Value *Original = Operand;
+-        Value *Copy = Duplicate;
+-        if(Original->getType()->isPointerTy() && Copy->getType()->isPointerTy()) {
+-          Type *OriginalType = Original->getType();
+-          Instruction *TmpLoad = B.CreateLoad(OriginalType, Original);
+-          Instruction *TmpStore = B.CreateStore(TmpLoad, Copy);
+-          DuplicatedInstructionMap.insert(
+-              std::pair<Instruction *, Instruction *>(TmpLoad, TmpLoad));
+-          DuplicatedInstructionMap.insert(
+-              std::pair<Instruction *, Instruction *>(TmpStore, TmpStore));
+-        }
+-      }
++  auto *CInstr = dyn_cast<CallBase>(&I);
++  if (CInstr == nullptr || CInstr->onlyReadsMemory()) {
++    return;
++  }
++  const DataLayout &DL = I.getModule()->getDataLayout();
++  std::set<Value *> Synchronized;
++  for (unsigned i = 0; i < CInstr->arg_size(); i++) {
++    Value *Original = CInstr->getArgOperand(i);
++    if (!Original->getType()->isPointerTy() || CInstr->onlyReadsMemory(i)) {
++      continue;
++    }
++    Value *OriginalObj = getUnderlyingObject(Original);
++    Value *Duplicate = getDuplicateValue(Original, &I);
++    Value *DuplicateObj = Duplicate != nullptr
++                              ? getUnderlyingObject(Duplicate)
++                              : getDuplicateValue(OriginalObj, &I);
++    if (DuplicateObj == nullptr || DuplicateObj == OriginalObj ||
++        Synchronized.count(DuplicateObj)) {
++      continue;
++    }
++    if (auto *GV = dyn_cast<GlobalVariable>(OriginalObj); GV && GV->isConstant()) {
++      continue;
++    }
++    Synchronized.insert(DuplicateObj);
++
++    std::optional<uint64_t> Size = getKnownObjectSize(OriginalObj, DL);
++    if (Size && Size == getKnownObjectSize(DuplicateObj, DL)) {
++      Instruction *Sync = B.CreateMemCpy(
++          DuplicateObj, DuplicateObj->getPointerAlignment(DL), OriginalObj,
++          OriginalObj->getPointerAlignment(DL), *Size);
++      DuplicatedInstructionMap.insert(
++          std::pair<Instruction *, Instruction *>(Sync, Sync));
++      continue;
++    }
++
++    // Objects not known at compile time: use the type of the pointed value
++    auto TypesIt = deducedTypes.transparentTypes.find(Original);
++    if (Duplicate == nullptr || TypesIt == deducedTypes.transparentTypes.end() ||
++        TypesIt->second.size() != 1) {
++      continue;
++    }
++    TransparentType *PtrTy = TypesIt->second.begin()->get();
++    if (!PtrTy->isPointerTT() || PtrTy->getPointedType() == nullptr) {
++      continue;
++    }
++    Type *PointedTy = PtrTy->getPointedType()->getLLVMType();
++    if (PointedTy == nullptr || !PointedTy->isSized()) {
++      continue;
++    }
++    Type *BytesTy = ArrayType::get(B.getInt8Ty(), DL.getTypeAllocSize(PointedTy));
++    BasicBlock &EntryBB = I.getFunction()->getEntryBlock();
++    IRBuilder<> AllocaB(&EntryBB, EntryBB.getFirstInsertionPt());
++    Instruction *Scratch = AllocaB.CreateAlloca(BytesTy);
++    Instruction *Next = &*B.GetInsertPoint();
++    Instruction *Last = Next->getPrevNode();
++    Value *Shared = B.CreateOr(B.CreateICmpEQ(Original, Duplicate),
++                               B.CreateIsNull(Duplicate));
++    Value *Dest = B.CreateSelect(Shared, Scratch, Duplicate);
++    Value *Source = getNullSafePointer(Original, BytesTy, B);
++    B.CreateMemCpy(Dest, MaybeAlign(), Source, MaybeAlign(),
++                   DL.getTypeAllocSize(PointedTy));
++    // the new instructions must not be duplicated
++    DuplicatedInstructionMap.insert(std::pair<Value *, Value *>(Scratch, Scratch));
++    for (Instruction *New = Last->getNextNode(); New != Next; New = New->getNextNode()) {
++      DuplicatedInstructionMap.insert(std::pair<Value *, Value *>(New, New));
+     }
+   }
+ }
+-- 
+2.43.0
+

@@ -1,0 +1,5 @@
+application,config,text_bytes,comparisons,executed_instructions
+aes128,EDDI+RASM,45035,274,3601844
+fft,EDDI+RASM,38468,314,1717592
+huffman,EDDI+RASM,47656,426,910047
+pid_control,EDDI+RASM,29610,245,2699708

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Copies the results of a campaign into the repository: metrics.csv,
 outcomes.csv and all the experiments in one compressed CSV (raw.csv.gz, one
-row per injected fault, with the benchmark, configuration and fault model).
+row per injected fault, with the application, configuration and fault model).
 
 Usage: export.py <campaign output dir> <destination dir>
 """
@@ -25,10 +25,10 @@ def main():
     with gzip.open(os.path.join(dst, "raw.csv.gz"), "wt", newline="") as out:
         w = None
         for path in files:
-            bench, conf, model, chunk = os.path.basename(path)[:-4].split("__")
+            app, conf, model, chunk = os.path.basename(path)[:-4].split("__")
             with open(path, newline="") as f:
                 for r in csv.DictReader(f):
-                    r = {"benchmark": bench, "config": conf, "chunk": int(chunk), **r}
+                    r = {"application": app, "config": conf, "chunk": int(chunk), **r}
                     if w is None:
                         w = csv.DictWriter(out, fieldnames=list(r.keys()))
                         w.writeheader()

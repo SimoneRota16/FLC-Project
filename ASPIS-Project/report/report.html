@@ -92,7 +92,7 @@
 <body>
 <header id="title-block-header">
 <h1 class="title">Hardening C applications with ASPIS</h1>
-<p class="subtitle">Benchmarks, compiler fixes and fault-injection evaluation</p>
+<p class="subtitle">Four applications, three fixes and a fault-injection evaluation</p>
 <p class="author">Alberto Rotolo, Simone Rota</p>
 <p class="date">Formal Languages and Compilers, A.Y. 2026/27, Politecnico di Milano<br>Supervisors: Davide Baroffio, Emilio Corigliano</p>
 </header>
@@ -103,87 +103,63 @@
 <ul>
 <li><a href="#soft-errors-and-software-implemented-fault-tolerance" id="toc-soft-errors-and-software-implemented-fault-tolerance">1.1 Soft errors and software-implemented fault tolerance</a></li>
 <li><a href="#aspis" id="toc-aspis">1.2 ASPIS</a></li>
+<li><a href="#the-test-harness-of-aspis" id="toc-the-test-harness-of-aspis">1.3 The test harness of ASPIS</a></li>
 </ul></li>
-<li><a href="#the-benchmarks" id="toc-the-benchmarks">2. The benchmarks</a>
+<li><a href="#the-applications" id="toc-the-applications">2. The applications</a></li>
+<li><a href="#hardening-the-applications" id="toc-hardening-the-applications">3. Hardening the applications</a>
 <ul>
-<li><a href="#applications" id="toc-applications">2.1 Applications</a></li>
-<li><a href="#microbenchmarks" id="toc-microbenchmarks">2.2 Microbenchmarks</a></li>
+<li><a href="#results-on-the-main-branch" id="toc-results-on-the-main-branch">3.1 Results on the main branch</a></li>
+<li><a href="#bug-1-checks-that-dereference-a-null-pointer" id="toc-bug-1-checks-that-dereference-a-null-pointer">3.2 Bug 1: checks that dereference a null pointer</a></li>
+<li><a href="#bug-2-the-copy-after-calls-to-library-functions" id="toc-bug-2-the-copy-after-calls-to-library-functions">3.3 Bug 2: the copy after calls to library functions</a></li>
+<li><a href="#no-regressions" id="toc-no-regressions">3.4 No regressions</a></li>
 </ul></li>
-<li><a href="#compatibility-of-aspis-with-the-benchmarks" id="toc-compatibility-of-aspis-with-the-benchmarks">3. Compatibility of ASPIS with the benchmarks</a>
+<li><a href="#fault-injection" id="toc-fault-injection">4. Fault injection</a>
 <ul>
-<li><a href="#method" id="toc-method">3.1 Method</a></li>
-<li><a href="#results" id="toc-results">3.2 Results</a></li>
+<li><a href="#fault-models" id="toc-fault-models">4.1 Fault models</a></li>
+<li><a href="#the-injector" id="toc-the-injector">4.2 The injector</a></li>
+<li><a href="#the-campaign" id="toc-the-campaign">4.3 The campaign</a></li>
 </ul></li>
-<li><a href="#bugs-found-and-fixed-in-aspis" id="toc-bugs-found-and-fixed-in-aspis">4. Bugs found and fixed in ASPIS</a>
+<li><a href="#results" id="toc-results">5. Results</a>
 <ul>
-<li><a href="#termination-of-the-type-deduction-commit-1" id="toc-termination-of-the-type-deduction-commit-1">4.1 Termination of the type deduction (commit 1)</a></li>
-<li><a href="#checks-that-crash-or-compare-garbage-commits-2-11-14" id="toc-checks-that-crash-or-compare-garbage-commits-2-11-14">4.2 Checks that crash or compare garbage (commits 2, 11, 14)</a></li>
-<li><a href="#calls-to-code-that-is-not-hardened-commits-3-4-7" id="toc-calls-to-code-that-is-not-hardened-commits-3-4-7">4.3 Calls to code that is not hardened (commits 3, 4, 7)</a></li>
-<li><a href="#duplication-of-the-program-structure-commits-5-6-8-9-10-12" id="toc-duplication-of-the-program-structure-commits-5-6-8-9-10-12">4.4 Duplication of the program structure (commits 5, 6, 8, 9, 10, 12)</a></li>
-<li><a href="#reddi-commit-13" id="toc-reddi-commit-13">4.5 REDDI (commit 13)</a></li>
-<li><a href="#control-flow-checking-commits-15-16-17" id="toc-control-flow-checking-commits-15-16-17">4.6 Control-flow checking (commits 15, 16, 17)</a></li>
-<li><a href="#other-observations" id="toc-other-observations">4.7 Other observations</a></li>
+<li><a href="#cost-of-the-protection" id="toc-cost-of-the-protection">5.1 Cost of the protection</a></li>
+<li><a href="#register-bit-flips" id="toc-register-bit-flips">5.2 Register bit-flips</a></li>
+<li><a href="#inverted-branches" id="toc-inverted-branches">5.3 Inverted branches</a></li>
+<li><a href="#bug-3-found-by-the-fault-injection" id="toc-bug-3-found-by-the-fault-injection">5.4 Bug 3, found by the fault injection</a></li>
+<li><a href="#per-application" id="toc-per-application">5.5 Per application</a></li>
 </ul></li>
-<li><a href="#fault-injection" id="toc-fault-injection">5. Fault injection</a>
-<ul>
-<li><a href="#fault-models" id="toc-fault-models">5.1 Fault models</a></li>
-<li><a href="#the-injector" id="toc-the-injector">5.2 The injector</a></li>
-<li><a href="#the-campaign" id="toc-the-campaign">5.3 The campaign</a></li>
-</ul></li>
-<li><a href="#results-1" id="toc-results-1">6. Results</a>
-<ul>
-<li><a href="#cost-of-the-protection" id="toc-cost-of-the-protection">6.1 Cost of the protection</a></li>
-<li><a href="#outcome-of-the-faults" id="toc-outcome-of-the-faults">6.2 Outcome of the faults</a></li>
-<li><a href="#per-application" id="toc-per-application">6.3 Per application</a></li>
-<li><a href="#cost-effectiveness" id="toc-cost-effectiveness">6.4 Cost-effectiveness</a></li>
-</ul></li>
-<li><a href="#integration-into-aspis" id="toc-integration-into-aspis">7. Integration into ASPIS</a></li>
-<li><a href="#limitations-and-future-work" id="toc-limitations-and-future-work">8. Limitations and future work</a></li>
-<li><a href="#declaration-on-the-use-of-large-language-models" id="toc-declaration-on-the-use-of-large-language-models">9. Declaration on the use of large language models</a></li>
+<li><a href="#integration-into-aspis" id="toc-integration-into-aspis">6. Integration into ASPIS</a></li>
+<li><a href="#limitations" id="toc-limitations">7. Limitations</a></li>
+<li><a href="#declaration-on-the-use-of-large-language-models" id="toc-declaration-on-the-use-of-large-language-models">8. Declaration on the use of large language models</a></li>
 <li><a href="#appendix-a.-reproducing-the-results" id="toc-appendix-a.-reproducing-the-results">Appendix A. Reproducing the results</a></li>
 <li><a href="#references" id="toc-references">References</a></li>
 </ul>
 </nav>
 <h1 id="summary">Summary</h1>
-<p>ASPIS is an out-of-tree LLVM plugin that hardens programs against radiation-induced soft errors by duplicating the computation (EDDI and its variants) and by checking the control flow with signatures (CFCSS, RASM, inter-RASM, RACFED). The goals of the project were (1) to protect C applications with ASPIS, (2) to verify the protection with fault injection and (3) to integrate the applications into the ASPIS main branch for regression testing. This report describes what was done for each goal:</p>
+<p>ASPIS is a set of LLVM passes that hardens programs against soft errors by duplicating the computation (EDDI and its variants) and by checking the control flow with signatures (CFCSS, RASM and others). The goals of the project were (1) to protect C applications with ASPIS, (2) to verify the protection with fault injection and (3) to integrate the applications into the ASPIS main branch for regression testing.</p>
 <ul>
-<li><strong>22 benchmarks</strong> written for the purpose: 8 self-checking applications (AES-128, a binary search tree, an expression compiler with a virtual machine, an FFT, Huffman coding, an LU solver, a PID controller and a Sobel filter) and 14 microbenchmarks, each one stressing a feature of C that the passes have to handle (function pointers called back by libc, variadic functions, structs passed by value, VLAs, setjmp/longjmp, bit-fields, …).</li>
-<li><strong>A compatibility campaign</strong> that compiles every benchmark with the 55 combinations of data protection and control-flow checking of the official test harness. On the main branch of ASPIS 435 (36%) of the 1210 hardened builds produce the right output; the others do not compile, make the compiler hang, crash, or report faults that never happened.</li>
-<li><strong>23 defects found and fixed</strong>, 22 in the passes of ASPIS and one in the TypeDeductionAnalysis library it uses, organised as a series of 19 commits ready for the main branch; the fixes come with 14 minimal reproducers of a few lines of C each, and the last defect was found by the fault injection. With the series all the 1210 builds pass, the existing ASPIS tests still pass (2453/2453), and 23 combinations that were blacklisted in the test suite now pass too.</li>
-<li><strong>A fault injector</strong> for x86-64 Linux binaries that injects register bit-flips, inverted branches and wrong jump targets, stopping the program at a random dynamic instruction with a hardware breakpoint; and <strong>a campaign of 240,900 injections</strong> (8 applications, 11 hardening configurations, 3 fault models, 1000 faults each, 300 for the slowest application) that measures how much each technique reduces the silent data corruptions, at which cost.</li>
+<li>We wrote <strong>four small self-checking applications</strong>: AES-128 encryption, an FFT, Huffman compression and a PID speed controller.</li>
+<li>We added them to the official test harness of ASPIS, which builds every test with 55 combinations of techniques. On the main branch only 100 of the 220 builds work: EDDI, sEDDI and FDSC, the techniques that duplicate the whole program, make all four applications crash. We found the <strong>bug in EDDI</strong> behind the crashes and fixed it, together with a related one whose fix it needs. With the fixes all 220 builds pass, and the 48 tests already in ASPIS give the same results as before.</li>
+<li>We wrote a <strong>fault injector</strong> based on <code>ptrace</code> and ran <strong>56,000 experiments</strong> that flip a bit in a register or invert a conditional jump, on six hardening configurations.</li>
+<li>EDDI reduces the silent data corruptions (SDCs) caused by register bit-flips from 1.70% to 0.15% of the faults, at 3.8 times the executed instructions. RASM detects 99.3% of the inverted branches, CFCSS only 62.6%. The campaign also revealed a <strong>third bug</strong>: RASM did not check the blocks created by EDDI, so EDDI combined with RASM missed more inverted branches than RASM alone (10.5% of SDCs instead of 0.7%). With the fix the combination leaves no SDC in 4000 inverted branches.</li>
 </ul>
-<p>The campaign shows that EDDI reduces the silent data corruptions caused by register bit-flips by a factor of 13.6 (from 1.86% to 0.14% of the faults) at 3.8 times the executed instructions, and that EDDI with CFCSS leaves one SDC in 7300 register faults. Data duplication cannot see a branch taken the wrong way, while the signature-based RASM, inter-RASM and RACFED detect 99.4% of the inverted branches. The campaign also revealed one more defect: RASM and RACFED did not check the blocks created by EDDI, so EDDI combined with them was <em>less</em> effective against control-flow faults than RASM or RACFED alone (12% of SDCs for inverted branches instead of 0.6%). With the fix these combinations leave no SDC for inverted branches.</p>
-<p>All the code, the raw results and the scripts that produce every table and figure of this report are in the repository (<code>ASPIS-Project/</code>, see Appendix A). The use of a large language model in the project is declared in Section 9.</p>
+<p>The fixes and the tests are ready as four patches for the ASPIS repository (<code>aspis-integration/</code>). All the code, the raw results and the scripts that produce every table and figure are in the repository (Appendix A). The use of a large language model is declared in Section 8.</p>
 <h1 id="background">1. Background</h1>
 <h2 id="soft-errors-and-software-implemented-fault-tolerance">1.1 Soft errors and software-implemented fault tolerance</h2>
-<p>A particle strike can flip a bit in a register, in a pipeline latch or in a memory cell: the fault is transient, the hardware is not damaged, but the program may compute a wrong result without noticing it (a <em>silent data corruption</em>, SDC), crash, or hang. Software-Implemented Hardware Fault Tolerance (SIHFT) protects programs running on unprotected hardware by transforming the code: <em>data-flow</em> techniques duplicate the computation and compare the copies at selected points, <em>control-flow checking</em> (CFC) techniques assign a signature to each basic block and verify at run time that the blocks are executed in an order allowed by the control-flow graph.</p>
+<p>A particle strike can flip a bit in a register or in a memory cell. The hardware is not damaged, but the program may compute a wrong result without noticing it (a <em>silent data corruption</em>, SDC), crash, or hang. Software-Implemented Hardware Fault Tolerance (SIHFT) protects programs that run on unprotected hardware by transforming their code. <em>Data-flow</em> techniques duplicate the computation and compare the two copies at selected points. <em>Control-flow checking</em> (CFC) techniques give each basic block a signature and check at run time that the blocks are executed in an order allowed by the control-flow graph.</p>
 <h2 id="aspis">1.2 ASPIS</h2>
-<p>ASPIS (<em>Automatic Software-based Protection and Integrity Suite</em>, Baroffio et al., ACM TODAES 2024, doi:10.1145/3660524) implements these transformations as LLVM passes on the IR. The <code>aspis.sh</code> driver compiles all the sources to IR at <code>-O0</code>, links them, and runs:</p>
+<p>ASPIS (<em>Automatic Software-based Protection and Integrity Suite</em>, Baroffio et al., ACM TODAES 2024) implements these transformations as passes on the LLVM intermediate representation (IR). Its driver, <code>aspis.sh</code>, compiles the sources to IR without optimisations, links them, and runs:</p>
 <ol type="1">
-<li><code>FuncRetToRef</code>: every function returning a value gets a <code>_ret</code> version that writes the result through an extra pointer parameter, so that the two copies of the program can receive two copies of the result;</li>
-<li>one of the data protection passes, all sharing the same implementation (<code>EDDI.cpp</code>) with different compile-time switches:
-<ul>
-<li><strong>EDDI</strong> (Oh et al., 2002) duplicates every instruction and checks the two copies at the synchronisation points: stores, calls and branches;</li>
-<li><strong>sEDDI</strong> (selective EDDI) does not check at stores;</li>
-<li><strong>FDSC</strong> (Full Duplication with Selective Checking) duplicates everything but checks only at a subset of the synchronisation points;</li>
-<li><strong>REDDI</strong> hardens only the functions and globals annotated with <code>to_harden</code> (and what they need);</li>
-<li><code>--multiple-errbb</code> uses a separate error block for each check, and <code>--coarse-grained</code> (REPAIR) groups the duplicated instructions after the original ones to increase their distance in time;</li>
-</ul></li>
-<li>one of the control-flow checking passes:
-<ul>
-<li><strong>CFCSS</strong> (Oh et al., 2002): a run-time signature, XORed at the entry of each block with the difference between its signature and the one of its predecessor (with an adjusting signature for blocks with several predecessors);</li>
-<li><strong>RASM</strong> (Vankeirsbilck et al., 2017): random additive signatures, checked at the entry of each block and updated before leaving it towards the chosen successor; <strong>inter-RASM</strong> extends the check across calls and returns using global signatures;</li>
-<li><strong>RACFED</strong> (Vankeirsbilck et al., 2018): additive signatures also updated after every instruction of a block, to detect jumps into the middle of a block;</li>
-</ul></li>
-<li><code>DuplicateGlobals</code>, which keeps the duplicated globals consistent when they are written by functions that were not hardened.</li>
+<li><code>FuncRetToRef</code>: every function that returns a value gets a <code>_ret</code> version that writes the result through an extra pointer parameter, so that the two copies of the program can receive two copies of the result;</li>
+<li>a data protection pass. <strong>EDDI</strong> (Oh et al., 2002) duplicates every instruction and compares the two copies before stores, calls and branches; <strong>sEDDI</strong> does not compare before stores; <strong>FDSC</strong> compares only at a subset of these points; <strong>REDDI</strong> hardens only the functions marked with the annotation <code>to_harden</code>;</li>
+<li>a control-flow checking pass. <strong>CFCSS</strong> (Oh et al., 2002) updates a run-time signature with an XOR at the entry of each block and compares it with the signature of the block. <strong>RASM</strong> (Vankeirsbilck et al., 2017) checks the signature at the entry of each block and, before leaving the block, adds a value that depends on the successor that is taken. ASPIS also offers inter-RASM and RACFED, variants of RASM;</li>
+<li><code>DuplicateGlobals</code>, which keeps the duplicated global variables consistent.</li>
 </ol>
-<p>Every function <code>f</code> that is hardened gets a version <code>f_dup</code> that takes each parameter twice and executes both copies of the computation; global variables get a <code>_dup</code> copy. When a check fails, the program calls <code>DataCorruption_Handler</code> (data checks) or <code>SigMismatch_Handler</code> (signature checks), which the application must define. Since LLVM pointers became opaque, the data passes rely on the <em>Type Deduction Analysis</em> (TDA) library to know the type pointed by a pointer, because the checks on pointers compare the pointed values: the two copies of a pointer to a duplicated object legitimately differ.</p>
-<p>Annotations (<code>__attribute__((annotate("...")))</code>) refine the protection: <code>exclude</code> leaves a function or global unprotected, <code>to_duplicate</code> duplicates the calls to a function instead of its body, <code>to_harden</code> selects what REDDI protects.</p>
-<p>As an example, this is how EDDI (with the fixes of Section 4) transforms <code>int scale(int v) { return v * g; }</code>, where <code>g</code> is a global. The function returns its result through a pointer (<code>FuncRetToRef</code>), every parameter comes twice (<code>%0</code>/<code>%2</code> are the two copies of <code>v</code>, <code>%1</code>/<code>%3</code> of the return pointer), every load, multiplication and store is executed twice on the two copies of the data, and the two results are compared before they leave the function:</p>
+<p>Every hardened function <code>f</code> gets a version <code>f_dup</code> that takes each parameter twice and executes both copies of the computation; each global variable gets a <code>_dup</code> copy. When a check fails the program calls <code>DataCorruption_Handler</code> (data checks) or <code>SigMismatch_Handler</code> (signature checks), two functions that the application must define. Checks on pointers do not compare the two pointers, which legitimately differ when they point to the two copies of a variable, but the values they point to; ASPIS knows the pointed type through the <em>TypeDeductionAnalysis</em> library.</p>
+<p>As an example, this is how EDDI (with our fixes) transforms <code>int scale(int v) { return v * g; }</code>, where <code>g</code> is a global variable. The result is returned through a pointer (<code>FuncRetToRef</code>), every parameter comes twice (<code>%0</code> and <code>%2</code> are the two copies of <code>v</code>, <code>%1</code> and <code>%3</code> of the result pointer), every load and multiplication is executed twice, and the two results are compared before they leave the function:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode llvm"><code class="sourceCode llvm"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">define</span> <span class="dt">void</span> <span class="fu">@scale_ret_dup</span>(<span class="dt">i32</span> <span class="fu">%0</span>, ptr <span class="fu">%1</span>, <span class="dt">i32</span> <span class="fu">%2</span>, ptr <span class="fu">%3</span>) {</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">%4</span> = <span class="kw">alloca</span> <span class="dt">i32</span>                       <span class="co">; v</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">%5</span> = <span class="kw">alloca</span> <span class="dt">i32</span>                       <span class="co">; its duplicate</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">call</span> <span class="dt">void</span> <span class="fu">@llvm.memcpy</span>(ptr <span class="fu">%5</span>, ptr <span class="fu">%4</span>, <span class="dt">i64</span> <span class="dv">4</span>, <span class="dt">i1</span> <span class="kw">false</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">VerificationBB:</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">%4</span> = <span class="kw">alloca</span> <span class="dt">i32</span>                       <span class="co">; v</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">%5</span> = <span class="kw">alloca</span> <span class="dt">i32</span>                       <span class="co">; its copy</span></span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">store</span> <span class="dt">i32</span> <span class="fu">%2</span>, ptr <span class="fu">%4</span></span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">store</span> <span class="dt">i32</span> <span class="fu">%0</span>, ptr <span class="fu">%5</span></span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">%6</span> = <span class="kw">load</span> <span class="dt">i32</span>, ptr <span class="fu">%4</span></span>
@@ -202,541 +178,160 @@
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  <span class="kw">call</span> <span class="dt">void</span> <span class="fu">@DataCorruption_Handler</span>()</span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  <span class="kw">unreachable</span></span>
 <span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
-<h1 id="the-benchmarks">2. The benchmarks</h1>
-<p>The proposal leaves the choice of the code to harden open. Instead of taking large existing programs, we wrote small programs designed for two purposes at once: being representative of the code that runs on the embedded systems targeted by SIHFT, and stressing the parts of C that a duplicating compiler can get wrong. All of them follow the same rules:</p>
+<h2 id="the-test-harness-of-aspis">1.3 The test harness of ASPIS</h2>
+<p>The tests of ASPIS are listed in <code>testing/config/tests.toml</code>. The harness (<code>pytest test.py</code> in <code>testing/</code>) compiles each test with the 11 data protection options (none, EDDI and its variants <code>--multiple-errbb</code> and <code>--coarse-grained</code>, REDDI and the same variants, sEDDI, FDSC) combined with the 5 control-flow options (none, CFCSS, RASM, RACFED, inter-RASM), runs it, and compares its output with the output of the program compiled by <code>clang++</code> without ASPIS. A test can exclude some techniques with a <code>black_list</code>.</p>
+<h1 id="the-applications">2. The applications</h1>
+<p>We wrote four small applications representative of the code that runs on the embedded systems targeted by SIHFT. They follow the same rules:</p>
 <ul>
-<li>they are <strong>deterministic</strong> and <strong>self-checking</strong>: they print a summary of their results, compare them with known answers and end with <code>SUCCESS</code> or <code>FAIL</code> (exit status 0 or 1), so a corrupted result is visible both in the output and in the exit status;</li>
-<li>they define the two <strong>fault handlers</strong>, which print <code>FAULT_DETECTED:   DataCorruption</code> or <code>FAULT_DETECTED: SigMismatch</code> on stderr and exit with status 2 or 3, so detections are easy to classify;</li>
-<li>they are valid <strong>C and C++</strong> (the official harness compiles the reference binary with <code>clang++</code>) and give identical outputs in both languages;</li>
-<li>they are <strong>short-running</strong> (the applications execute between 56 thousand and 4.7 million instructions in their own code), so that thousands of fault injections are affordable;</li>
-<li>they depend only on the C standard library and are released under the <strong>MIT license</strong>, so that they can enter the ASPIS repository.</li>
+<li>they are <strong>deterministic</strong> and <strong>self-checking</strong>: they print a summary of their results, compare them with known answers and end with <code>SUCCESS</code> or <code>FAIL</code> (exit status 0 or 1);</li>
+<li>they define the two <strong>fault handlers</strong>, which print <code>FAULT_DETECTED: DataCorruption</code> or <code>FAULT_DETECTED: SigMismatch</code> on stderr and exit with status 2 or 3, so that a detection is easy to recognise;</li>
+<li>they are valid <strong>C and C++</strong>, because the harness compiles the reference program with <code>clang++</code>;</li>
+<li>they are <strong>short</strong>: they execute less than a million instructions, so that thousands of fault injections take minutes;</li>
+<li>they use only the C standard library and are released under the <strong>MIT license</strong>, so that they can enter the ASPIS repository.</li>
 </ul>
-<h2 id="applications">2.1 Applications</h2>
 <table>
+<caption>The applications. <em>Instructions</em>: x86-64 instructions executed in the program’s own code (excluding the C library) by the unprotected program, measured by the profiler of Section 4.</caption>
 <thead>
 <tr class="header">
-<th>Benchmark</th>
+<th>Application</th>
 <th>What it does</th>
 <th style="text-align: right;">Lines</th>
 <th style="text-align: right;">Instructions</th>
-<th>Features of C exercised</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td><code>aes128</code></td>
-<td>AES-128 (FIPS-197) known-answer test, CBC encryption and decryption of 64 bytes; S-boxes computed at start-up in GF(2^8)</td>
+<td>AES-128 encryption (FIPS-197): known-answer test, encryption and decryption of 64 bytes in CBC mode; the S-boxes are computed at start-up</td>
 <td style="text-align: right;">315</td>
 <td style="text-align: right;">645,680</td>
-<td>byte arithmetic, table look-ups in global arrays written at run time</td>
-</tr>
-<tr class="even">
-<td><code>bst_dict</code></td>
-<td>word-frequency dictionary on a binary search tree: insert, lookup, in-order visit, deletion (leaf, one and two children), destruction checking for leaks</td>
-<td style="text-align: right;">238</td>
-<td style="text-align: right;">56,117</td>
-<td>heap objects, pointers to pointers, recursion, string functions of libc</td>
-</tr>
-<tr class="odd">
-<td><code>expr_vm</code></td>
-<td>a miniature compiler: lexer, recursive-descent parser, constant folder, bytecode generator and stack VM; each expression is evaluated three ways and the results must agree</td>
-<td style="text-align: right;">615</td>
-<td style="text-align: right;">79,421</td>
-<td>mutual recursion, many switches, array-based AST, <code>snprintf</code> into a hardened buffer</td>
 </tr>
 <tr class="even">
 <td><code>fft</code></td>
-<td>iterative radix-2 FFT of 256 points: dominant bins, Parseval’s theorem, inverse transform</td>
+<td>radix-2 FFT of 256 points: dominant frequencies, Parseval’s theorem, inverse transform</td>
 <td style="text-align: right;">176</td>
 <td style="text-align: right;">367,763</td>
-<td>double-precision arithmetic, arrays of structs, calls to libm</td>
 </tr>
 <tr class="odd">
 <td><code>huffman</code></td>
-<td>Huffman compression and decompression round trip with a binary min-heap</td>
+<td>Huffman compression and decompression of a text, with a binary min-heap</td>
 <td style="text-align: right;">215</td>
 <td style="text-align: right;">170,978</td>
-<td>index-based trees, data-dependent loops, bit-level I/O on a global buffer</td>
 </tr>
 <tr class="even">
-<td><code>lu_solve</code></td>
-<td>LU decomposition with partial pivoting of a 12x12 matrix: solution of a system, determinant, inverse and check of A·A⁻¹</td>
-<td style="text-align: right;">190</td>
-<td style="text-align: right;">126,780</td>
-<td>2-D global arrays of doubles, row pointers, pivot search</td>
-</tr>
-<tr class="odd">
 <td><code>pid_control</code></td>
-<td>closed-loop speed control of a DC motor with a PID (anti-windup, filtered derivative, quantised encoder), 2000 steps</td>
+<td>closed-loop speed control of a DC motor with a PID controller, 2000 steps</td>
 <td style="text-align: right;">152</td>
 <td style="text-align: right;">477,393</td>
-<td>single-precision floats, controller state in a global struct</td>
-</tr>
-<tr class="even">
-<td><code>sobel</code></td>
-<td>Gaussian smoothing and Sobel edge detection on a synthetic 48x48 image, with histogram and checksums</td>
-<td style="text-align: right;">166</td>
-<td style="text-align: right;">4,735,264</td>
-<td>2-D arrays of bytes, clamping, small helpers in tight loops</td>
 </tr>
 </tbody>
 </table>
-<p><em>Lines</em>: lines of the source file. <em>Instructions</em>: x86-64 instructions executed in the program’s own code (excluding libc and the loader) by the unhardened binary, measured by the profiler of Section 5.</p>
-<h2 id="microbenchmarks">2.2 Microbenchmarks</h2>
+<h1 id="hardening-the-applications">3. Hardening the applications</h1>
+<h2 id="results-on-the-main-branch">3.1 Results on the main branch</h2>
+<p>We added the four applications to <code>tests.toml</code> and ran the harness on the main branch of ASPIS (commit <code>b66a090</code>, LLVM 21.1.8, x86-64 Linux).</p>
 <table>
+<caption>Builds of the four applications that pass the harness (4 applications x 5 control-flow options for each data protection option), on the main branch and with our fixes.</caption>
 <thead>
 <tr class="header">
-<th>Benchmark</th>
-<th>What it checks</th>
+<th>data protection</th>
+<th style="text-align: right;">master: pass</th>
+<th style="text-align: right;">fixed: pass</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>annotations</code></td>
-<td><code>to_harden</code>, <code>exclude</code> and <code>to_duplicate</code> on functions and globals; the output must not depend on the technique</td>
+<td>none (<code>--no-dup</code>)</td>
+<td style="text-align: right;">20 / 20</td>
+<td style="text-align: right;">20 / 20</td>
 </tr>
 <tr class="even">
-<td><code>callbacks_libc</code></td>
-<td><code>qsort</code> and <code>bsearch</code> calling hardened comparators, a global table of function pointers, a function returning a function pointer</td>
+<td>EDDI, 4 variants</td>
+<td style="text-align: right;">0 / 80</td>
+<td style="text-align: right;">80 / 80</td>
 </tr>
 <tr class="odd">
-<td><code>ctor_tls</code></td>
-<td>constructors running before <code>main</code>, thread-local variables, an <code>atexit</code> handler</td>
+<td>sEDDI</td>
+<td style="text-align: right;">0 / 20</td>
+<td style="text-align: right;">20 / 20</td>
 </tr>
 <tr class="even">
-<td><code>dynamic_memory</code></td>
-<td>growable vector (<code>realloc</code>), linked list, 2-D array of row pointers, overlapping <code>memmove</code> on the heap</td>
+<td>FDSC</td>
+<td style="text-align: right;">0 / 20</td>
+<td style="text-align: right;">20 / 20</td>
 </tr>
 <tr class="odd">
-<td><code>float_special</code></td>
-<td>NaN, infinities, signed zeros, subnormals, <code>long double</code>: checks must not report a NaN as a corruption</td>
+<td>REDDI, 4 variants</td>
+<td style="text-align: right;">80 / 80</td>
+<td style="text-align: right;">80 / 80</td>
 </tr>
 <tr class="even">
-<td><code>globals_pointers</code></td>
-<td>globals initialised with the address of other globals, pointers to pointers, static locals, struct globals reached through pointers</td>
-</tr>
-<tr class="odd">
-<td><code>int_arith_edge</code></td>
-<td>8 to 128-bit integers, wrap-around, shifts, division of negative numbers, overflow intrinsics, byte swaps</td>
-</tr>
-<tr class="even">
-<td><code>lexer_dfa</code></td>
-<td>the same lexer written with <code>goto</code> and as a table-driven DFA: irreducible-looking control flow, many small blocks</td>
-</tr>
-<tr class="odd">
-<td><code>recursion</code></td>
-<td>deep, mutual and multi-way recursion (Ackermann, Hanoi), flood fill, backtracking (N-Queens, permutations)</td>
-</tr>
-<tr class="even">
-<td><code>setjmp_longjmp</code></td>
-<td>a recursive evaluator that aborts with <code>longjmp</code> on errors</td>
-</tr>
-<tr class="odd">
-<td><code>struct_by_value</code></td>
-<td>small and large structs passed and returned by value (registers, <code>byval</code>, <code>sret</code>), calls through a pointer to a struct-returning function</td>
-</tr>
-<tr class="even">
-<td><code>unions_bitfields</code></td>
-<td>type punning through unions, bit-field read-modify-write with wrap-around, tagged unions</td>
-</tr>
-<tr class="odd">
-<td><code>varargs</code></td>
-<td><code>va_arg</code> with ints, doubles and pointers, <code>va_copy</code>, a <code>va_list</code> forwarded to <code>vsnprintf</code></td>
-</tr>
-<tr class="even">
-<td><code>vla_alloca</code></td>
-<td>one- and two-dimensional variable-length arrays in loops, <code>alloca</code></td>
+<td><strong>total</strong></td>
+<td style="text-align: right;"><strong>100 / 220</strong></td>
+<td style="text-align: right;"><strong>220 / 220</strong></td>
 </tr>
 </tbody>
 </table>
-<h1 id="compatibility-of-aspis-with-the-benchmarks">3. Compatibility of ASPIS with the benchmarks</h1>
-<h2 id="method">3.1 Method</h2>
-<p>The official harness (<code>testing/test.py</code>) compiles each test with each of the 11 data protection options (<code>--no-dup</code>, the four EDDI variants, the four REDDI variants, <code>--seddi</code>, <code>--fdsc</code>) combined with each of the 5 control-flow options (<code>--no-cfc</code>, <code>--cfcss</code>, <code>--rasm</code>, <code>--racfed</code>, <code>--inter-rasm</code>) and compares the standard output of the hardened program with the one of the program compiled by <code>clang++</code>; a non-zero exit status is a failure. Using it on the new benchmarks we hit two problems of the harness itself:</p>
+<p>The control-flow techniques work on all the applications. REDDI passes too, but only because our applications have no <code>to_harden</code> annotation, so REDDI hardens nothing. The three techniques that duplicate the whole program, EDDI (in its four variants), sEDDI and FDSC, make all the applications crash with a segmentation fault. The cause is the bug described in Section 3.3.</p>
+<h2 id="bug-1-checks-that-dereference-a-null-pointer">3.2 Bug 1: checks that dereference a null pointer</h2>
+<p>A check on a pointer compares the two values it points to. When the pointer is null (the end of a list, or <code>realloc(NULL, n)</code>, which is a valid call) the check itself dereferences it and the program crashes. The reproducer <code>null_pointer.c</code> is a short program that calls <code>realloc(NULL, ...)</code>. This bug does not affect our applications directly, but the fix of bug 2 reads memory through pointers that can be null, so it needs the fix of this one.</p>
+<p><strong>Fix</strong> (patch 0001). The loads of a check now read from a constant equal to zero when the pointer is null. If both copies of the pointer are null the check passes; if only one is null the loaded values differ and the fault is detected. While changing this code we also made the comparison depend on the LLVM type of the values instead of the type in the source: a small struct passed by value becomes an <code>i64</code>, and the old code treated it as a struct and made the compiler crash. Values of aggregate type (structs and arrays) are explicitly not compared: the old code emitted a comparison that had no effect, and their padding can legitimately differ between the two copies.</p>
+<h2 id="bug-2-the-copy-after-calls-to-library-functions">3.3 Bug 2: the copy after calls to library functions</h2>
+<p>When a hardened function calls a function that has no <code>_dup</code> version, like <code>printf</code>, the callee may write through its pointer arguments, and it updates only the original copy of the data. After the call EDDI therefore copies each pointed value from the original to the duplicate. The copy loaded and stored a pointer-sized value (8 bytes), whatever the pointed type was:</p>
 <ul>
-<li><strong>pytest-timeout does not stop the compiler</strong>: when <code>opt</code> loops forever the test fails after 60 s, but the <code>opt</code> process (child of a shell) keeps running and accumulates with the next ones;</li>
-<li><strong>builds share the working directory</strong>: <code>EDDI</code> writes the list of the functions it compiled (<code>compiled_eddi_functions.csv</code>) in the current directory and <code>DuplicateGlobals</code> reads it back, so two builds running at the same time in the same directory read each other’s list.</li>
+<li>if the pointer pointed to a string literal, the two copies of the pointer were the same address in read-only memory (<code>.rodata</code>), and the store made the program crash. This is the crash of all our applications: with a debugger we found the faulting store right after a <code>printf</code>, writing into <code>"kat ct: "</code> in <code>aes128</code> (a label received as a parameter and printed with <code>printf("%s", label)</code>) and into the string chosen by <code>ok ? "OK" : "MISMATCH"</code> or <code>ok ? "SUCCESS" : "FAIL"</code> in the other three. The reproducer <code>string_literal.c</code> is five lines long;</li>
+<li>for objects smaller than 8 bytes the copy overflowed the duplicate, and for larger ones only the first 8 bytes were copied.</li>
 </ul>
-<p>We therefore wrote two tools (in <code>ASPIS-Project/scripts/</code>): <code>run_aspis_harness.py</code> runs the official harness with one pytest process per test, each in a private directory, and kills the whole process group at the end; <code>aspis_matrix.py</code> builds the same 11x5 matrix with a hard time limit on every compilation and run, each build in its own directory, and classifies every failure (compiler error, compiler hang, crash, false detection, wrong output or exit status, hang of the program). All the measurements use LLVM 21.1.8, the version required by ASPIS, on x86-64 Linux.</p>
-<h2 id="results">3.2 Results</h2>
-<p>On the main branch of ASPIS only 435 of the 1210 builds (36%) produce the output of the unhardened program. The failures are not spread uniformly: no benchmark works with the techniques that duplicate the whole program. EDDI (in its four variants), sEDDI and FDSC fail on all the 660 builds. REDDI passes 332 of 440, but without annotations it hardens almost nothing (only <code>annotations</code> has <code>to_harden</code> functions, and it fails), and the control-flow techniques alone (<code>--no-dup</code>) pass 103 of 110. The most frequent failure is a crash at run time (405 builds). Of the 14 benchmarks that crash with EDDI, 13 crash on a write into the read-only data segment of the program, at the first call to a library function that receives a pointer to a constant (defect 4 of the next section); the other one, <code>callbacks_libc</code>, on a null pointer when <code>qsort</code> calls the duplicated comparator (defect 5). Then come 165 broken modules or crashes of <code>opt</code>, 105 detections of faults that were never injected, and 100 builds in which <code>opt</code> never terminates (every combination that duplicates data on <code>bst_dict</code> and <code>dynamic_memory</code>, the two benchmarks with recursive structs). With the fixes of Section 4 all the 1210 builds pass.</p>
-<figure>
-<img src="figures/compat.svg" alt="Hardened builds whose output matches the unhardened one, per data protection (rows) and control-flow checking (columns) technique, out of the 22 benchmarks. Left: ASPIS main branch (b66a090); right: with the fixes of Section 4." />
-<figcaption aria-hidden="true">Hardened builds whose output matches the unhardened one, per data protection (rows) and control-flow checking (columns) technique, out of the 22 benchmarks. Left: ASPIS main branch (<code>b66a090</code>); right: with the fixes of Section 4.</figcaption>
-</figure>
+<p><strong>Fix</strong> (patch 0002). Arguments that the callee cannot write through are skipped. Two distinct local or global variables are copied entirely with a <code>memcpy</code>. For any other pointer, the value of its deduced type is copied only if the two copies of the pointer differ at run time: when they are equal the memory is shared (it may even be read-only), so there is nothing to copy. The copy reads through the pointer, so it uses the null-safe loads of patch 0001.</p>
+<h2 id="no-regressions">3.4 No regressions</h2>
+<p>With the two fixes all the 220 builds of our applications pass. On the 48 tests that were already in ASPIS the harness gives exactly the same results with and without the fixes:</p>
 <table>
-<caption>Classification of the 1210 builds of the 22 benchmarks.</caption>
+<caption>Builds of the 48 existing tests of ASPIS (48 x 55 = 2640) on the main branch and with the fixes.</caption>
 <thead>
 <tr class="header">
-<th>outcome</th>
+<th>ASPIS tests</th>
 <th style="text-align: right;">master</th>
-<th style="text-align: right;">patched</th>
+<th style="text-align: right;">fixed</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td>compile-error</td>
-<td style="text-align: right;">165</td>
-<td style="text-align: right;">0</td>
+<td>passed</td>
+<td style="text-align: right;">2453</td>
+<td style="text-align: right;">2453</td>
 </tr>
 <tr class="even">
-<td>compile-hang</td>
-<td style="text-align: right;">100</td>
-<td style="text-align: right;">0</td>
+<td>failed</td>
+<td style="text-align: right;">33</td>
+<td style="text-align: right;">33</td>
 </tr>
 <tr class="odd">
-<td>crash</td>
-<td style="text-align: right;">405</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td>false-detect</td>
-<td style="text-align: right;">105</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td>pass</td>
-<td style="text-align: right;">435</td>
-<td style="text-align: right;">1210</td>
+<td>skipped</td>
+<td style="text-align: right;">154</td>
+<td style="text-align: right;">154</td>
 </tr>
 </tbody>
 </table>
-<p>On the existing ASPIS test suite (48 tests, 2640 builds of which 187 blacklisted) the patched version passes exactly the same 2453 builds as the main branch, so the fixes introduce no regression. Moreover, 23 of the blacklisted combinations pass after the fixes, in particular every data technique combined with inter-RASM on <code>cpp_class</code>, <code>cpp_heap</code> and <code>cpp_template</code>, which are removed from the blacklist by the last commit of the series. With the test configuration of the complete series (the 48 tests, our 22, and the reduced blacklist: 3850 builds, 154 blacklisted) all the 3696 remaining builds pass.</p>
-<h1 id="bugs-found-and-fixed-in-aspis">4. Bugs found and fixed in ASPIS</h1>
-<p>The failures of Section 3 come from the first 22 defects listed below; the 23rd does not make any build fail and was found by the fault-injection campaign (Section 6.2). For each one we found the root cause in the passes and wrote a fix; for 14 of them we also isolated a minimal reproducer (<code>aspis-integration/reproducers/</code>, a few lines of C each). Three defects (marked <em>latent</em>) were found while reading the code around the others and do not affect our benchmarks. The fixes are organised as a series of commits on top of the main branch (<code>aspis-integration/patches/</code>): every commit compiles on its own, has a message that explains the problem, and the series ends in the version used for all the experiments of this report.</p>
-<table class="long">
-<caption>The defects and the commits that fix them.</caption>
-<thead>
-<tr class="header">
-<th style="text-align: right;">#</th>
-<th>Defect</th>
-<th>Effect on master</th>
-<th style="text-align: right;">Commit</th>
-<th>Reproducer</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: right;">1</td>
-<td>TDA unrolls recursive types forever</td>
-<td>compiler hangs</td>
-<td style="text-align: right;">1</td>
-<td><code>r02</code></td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">2</td>
-<td>checks dereference null pointers</td>
-<td>crash</td>
-<td style="text-align: right;">2</td>
-<td><code>r03</code></td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">3</td>
-<td>comparison chosen from the source type (struct passed as <code>i64</code>)</td>
-<td>compiler crash</td>
-<td style="text-align: right;">2</td>
-<td><code>struct_by_value</code></td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">4</td>
-<td>re-synchronisation after calls: 8-byte copy, also into read-only memory</td>
-<td>crash, overflow</td>
-<td style="text-align: right;">3</td>
-<td><code>r01</code></td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">5</td>
-<td>callbacks replaced by their <code>_dup</code> version</td>
-<td>crash</td>
-<td style="text-align: right;">4</td>
-<td><code>r04</code></td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">6</td>
-<td>initializers of duplicated globals point to the originals</td>
-<td>false detection</td>
-<td style="text-align: right;">5</td>
-<td><code>r05</code></td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">7</td>
-<td>nested constant GEPs not remapped to the duplicates</td>
-<td>false detection</td>
-<td style="text-align: right;">6</td>
-<td><code>r06</code></td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">8</td>
-<td>duplicated <code>memmove</code> on non-duplicated memory</td>
-<td>wrong output</td>
-<td style="text-align: right;">7</td>
-<td><code>r07</code></td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">9</td>
-<td>return pointer after the variadic arguments (FuncRetToRef)</td>
-<td>broken module</td>
-<td style="text-align: right;">8</td>
-<td><code>r08</code></td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">10</td>
-<td>variadic arguments duplicated in direct calls</td>
-<td>wrong arguments, false detection</td>
-<td style="text-align: right;">9</td>
-<td><code>varargs</code></td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">11</td>
-<td><code>byval</code> only on one copy of the parameters</td>
-<td>crash</td>
-<td style="text-align: right;">9</td>
-<td><code>r09</code></td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">12</td>
-<td>clone of a VLA placed before its size</td>
-<td>broken module</td>
-<td style="text-align: right;">10</td>
-<td><code>r10</code></td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">13</td>
-<td>initialization check walks the block under construction</td>
-<td>false detection</td>
-<td style="text-align: right;">11</td>
-<td><code>expr_vm</code></td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">14</td>
-<td>temporary duplicate of an argument reused by another call</td>
-<td>broken module</td>
-<td style="text-align: right;">12</td>
-<td><code>r13</code></td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">15</td>
-<td>temporary duplicates allocated at the call site (stack growth in loops)</td>
-<td>latent</td>
-<td style="text-align: right;">12</td>
-<td></td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">16</td>
-<td>size of the <code>memcpy</code> of temporary duplicates truncated to 8 bits</td>
-<td>latent</td>
-<td style="text-align: right;">12</td>
-<td></td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">17</td>
-<td>temporary copy of a constant global outlives its stack frame</td>
-<td>latent</td>
-<td style="text-align: right;">12</td>
-<td></td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">18</td>
-<td>REDDI does not harden the <code>_ret</code> version of <code>to_harden</code> functions</td>
-<td>protection lost</td>
-<td style="text-align: right;">13</td>
-<td><code>r12</code></td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">19</td>
-<td>locals duplicated on demand are never written</td>
-<td>false detection</td>
-<td style="text-align: right;">13</td>
-<td><code>r12</code></td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">20</td>
-<td>bit-field updates read uninitialized bits of both copies</td>
-<td>false detection</td>
-<td style="text-align: right;">14</td>
-<td><code>unions_bitfields</code></td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">21</td>
-<td><code>setjmp</code>/<code>longjmp</code> leave stale signatures</td>
-<td>false detection</td>
-<td style="text-align: right;">15</td>
-<td><code>r11</code></td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">22</td>
-<td>inter-RASM: functions entered from non-hardened code</td>
-<td>false detection</td>
-<td style="text-align: right;">16</td>
-<td><code>r14</code></td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">23</td>
-<td>RASM and RACFED do not check the verification blocks of EDDI</td>
-<td>undetected control-flow errors</td>
-<td style="text-align: right;">17</td>
-<td>fault injection</td>
-</tr>
-</tbody>
-</table>
+<p>The 154 skipped builds are excluded by the <code>black_list</code> of their tests. The 33 failures are all the builds of <code>cpp_complex</code> that are not blacklisted: on our system the reference program does not compile, because the test uses <code>std::powf</code>, which the C++ library we used (libstdc++ 13) does not declare. The failure does not depend on ASPIS.</p>
+<h1 id="fault-injection">4. Fault injection</h1>
+<h2 id="fault-models">4.1 Fault models</h2>
+<p>We emulate a single transient fault in the processor while the program runs its own code (never in the C library or in the dynamic loader, which ASPIS does not harden). An experiment picks a <em>dynamic</em> instruction uniformly at random, i.e. a random instant of the execution, stops the program right before it and injects one fault:</p>
+<ul>
+<li><strong>register bit-flip</strong> (<code>reg</code>): one random bit of one of the 16 general purpose registers (<code>rax</code> … <code>r15</code>) is inverted;</li>
+<li><strong>inverted branch</strong> (<code>branch</code>): the instant is chosen among the executions of conditional jumps, and the jump goes to the successor that the condition did not select. This is the effect of a fault in the flags or in the branch unit, and the classic error that control-flow checking should detect.</li>
+</ul>
+<h2 id="the-injector">4.2 The injector</h2>
+<p><code>fault_injection/injector/fi.c</code> (about 550 lines of C) uses <code>ptrace</code>, the system call of debuggers, and has two commands:</p>
+<ul>
+<li><code>fi profile</code> runs the program step by step (<code>PTRACE_SINGLESTEP</code>), counts how many times each instruction runs and recognises the conditional jumps. It also saves the output of this fault-free run (<em>golden run</em>);</li>
+<li><code>fi inject</code> runs N experiments. For each one it draws an instruction and one of its executions (the <em>k</em>-th) from the profile, starts the program with address randomisation disabled (so that the addresses are the same in every run), and stops it right before the <em>k</em>-th execution with a software breakpoint (an <code>int3</code> instruction written at that address, counting the hits). Then it modifies the registers, lets the program continue without tracing and waits for it to end.</li>
+</ul>
+<p>Each experiment is classified, in this order, as: <em>hang</em> if the program did not end within 20 times its normal run time (at least 300 ms); <em>crash</em> if it was killed by a signal; <em>detected (data)</em> or <em>detected (CFC)</em> if one of the two handlers reported the fault; <em>masked</em> if its output and exit status are the same as in the golden run; <em>SDC</em> otherwise, which includes a wrong output and the program’s own check printing <code>FAIL</code>.</p>
+<h2 id="the-campaign">4.3 The campaign</h2>
+<p><code>fault_injection/campaign.py</code> builds each application with each configuration, records its size, profiles it and runs the injections in parallel. We used six configurations: the unprotected <code>baseline</code> (the same <code>aspis.sh</code> pipeline without transformations), EDDI, CFCSS, RASM, and EDDI combined with CFCSS and with RASM. For each application, configuration and fault model we injected 1000 faults, in chunks of 100 with seeds derived from the names: <strong>48,000 experiments</strong>. To measure the effect of the third bug (Section 5.4), EDDI+RASM was also run with ASPIS without its fix: 8,000 more experiments. Each proportion is given with its 95% confidence interval (Wilson score interval).</p>
+<h1 id="results">5. Results</h1>
+<h2 id="cost-of-the-protection">5.1 Cost of the protection</h2>
 <table>
-<caption>Behaviour of the reproducers on the main branch and with the fixes. Each one is compiled with the options in the second column.</caption>
-<thead>
-<tr class="header">
-<th>reproducer</th>
-<th>options</th>
-<th>master</th>
-<th>patched</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>r01_string_param.c</code></td>
-<td><code>--eddi --no-cfc</code></td>
-<td>crash (SIGSEGV)</td>
-<td>ok</td>
-</tr>
-<tr class="even">
-<td><code>r02_linked_list.c</code></td>
-<td><code>--eddi --no-cfc</code></td>
-<td>compiler hangs</td>
-<td>ok</td>
-</tr>
-<tr class="odd">
-<td><code>r03_null_argument.c</code></td>
-<td><code>--eddi --no-cfc</code></td>
-<td>crash (SIGSEGV)</td>
-<td>ok</td>
-</tr>
-<tr class="even">
-<td><code>r04_qsort_callback.c</code></td>
-<td><code>--eddi --no-cfc</code></td>
-<td>crash (SIGSEGV)</td>
-<td>ok</td>
-</tr>
-<tr class="odd">
-<td><code>r05_global_pointer_init.c</code></td>
-<td><code>--eddi --no-cfc</code></td>
-<td>false DataCorruption</td>
-<td>ok</td>
-</tr>
-<tr class="even">
-<td><code>r06_matrix_constant_index.c</code></td>
-<td><code>--eddi --no-cfc</code></td>
-<td>false DataCorruption</td>
-<td>ok</td>
-</tr>
-<tr class="odd">
-<td><code>r07_memmove_heap.c</code></td>
-<td><code>--eddi --no-cfc</code></td>
-<td>wrong output</td>
-<td>ok</td>
-</tr>
-<tr class="even">
-<td><code>r08_variadic.c</code></td>
-<td><code>--eddi --no-cfc</code></td>
-<td>broken module (call signature)</td>
-<td>ok</td>
-</tr>
-<tr class="odd">
-<td><code>r09_struct_by_value.c</code></td>
-<td><code>--eddi --no-cfc</code></td>
-<td>crash (SIGSEGV)</td>
-<td>ok</td>
-</tr>
-<tr class="even">
-<td><code>r10_vla.c</code></td>
-<td><code>--eddi --no-cfc</code></td>
-<td>broken module (dominance)</td>
-<td>ok</td>
-</tr>
-<tr class="odd">
-<td><code>r11_setjmp.c</code></td>
-<td><code>--no-dup --cfcss</code></td>
-<td>false SigMismatch</td>
-<td>ok</td>
-</tr>
-<tr class="even">
-<td><code>r12_reddi_return.c</code></td>
-<td><code>--reddi --no-cfc</code></td>
-<td>false DataCorruption</td>
-<td>ok</td>
-</tr>
-<tr class="odd">
-<td><code>r13_two_calls.c</code></td>
-<td><code>--eddi --no-cfc</code></td>
-<td>broken module (dominance)</td>
-<td>ok</td>
-</tr>
-<tr class="even">
-<td><code>r14_inter_rasm_callback.c</code></td>
-<td><code>--no-dup --inter-rasm</code></td>
-<td>false SigMismatch</td>
-<td>ok</td>
-</tr>
-</tbody>
-</table>
-<h2 id="termination-of-the-type-deduction-commit-1">4.1 Termination of the type deduction (commit 1)</h2>
-<p><strong>Symptom.</strong> <code>opt</code> never terminates on any program with a recursive struct, such as the nodes of a linked list or of a tree (<code>bst_dict</code>, <code>dynamic_memory</code>, reproducer <code>r02</code>).</p>
-<p><strong>Cause.</strong> TDA represents types as trees, so a recursive type is unrolled. The analysis iterates until no deduced type changes, but each iteration can unroll <code>struct node { ...; struct node *next; }</code> one more level (the type of the value loaded from <code>next</code> is merged back into the struct), and with two pointer fields the size of the type doubles at every level: the fixed point is never reached.</p>
-<p><strong>Fix</strong> (in TypeDeductionAnalysis). After every merge, a pointer to a struct that already appears on the path from the root of the type is made opaque, and the nesting depth is bounded for unnamed types. The set of possible types becomes finite, so the iteration terminates. For EDDI the effect is that the pointed value of <code>n-&gt;next</code> is not compared, as for any opaque pointer.</p>
-<h2 id="checks-that-crash-or-compare-garbage-commits-2-11-14">4.2 Checks that crash or compare garbage (commits 2, 11, 14)</h2>
-<p><strong>Null pointers (<code>r03</code>).</strong> A check on a pointer compares the values it points to. When the pointer is null (the end of a list, <code>realloc(NULL, n)</code>, <code>free(NULL)</code>), the check itself dereferences it and the program crashes. The loads of a check now go through <code>select(p == null, guard, p)</code>, where <code>guard</code> is a zero-initialised constant: if both copies are null the check passes, if only one is null the loaded values differ and the fault is detected.</p>
-<p><strong>Type of the comparison.</strong> <code>compareValues</code> chose how to compare two values from their deduced <em>source-level</em> type, but the ABI may have lowered it: a struct of two ints is passed as an <code>i64</code>, and <code>extractvalue</code> on an integer crashed <code>opt</code> (<code>struct_by_value</code>). Moreover, the comparison of aggregates emitted an <code>extractvalue</code> per element and then compared nothing, because the extracted elements had no deduced type. Now the comparison follows the LLVM type (integers with <code>icmp eq</code>, floating point with <code>fcmp ueq</code>, pointers by their pointed scalar value) and aggregates are explicitly not compared, since their padding and uninitialized fields legitimately differ between the copies.</p>
-<p><strong>Initialization check (commit 11).</strong> Before comparing the pointed value of an alloca, EDDI checks that the variable is written on every path that reaches the check. The search walked the CFG <em>while</em> the verification block was being built: that block has no terminator yet, the walk stopped there and concluded that the variable was initialized. In <code>expr_vm</code> this made EDDI compare the return slot of a call before the call, a false detection that appeared or not depending on the order in which instructions are visited. A block without terminator now counts as a path that reaches the check.</p>
-<p><strong>Bit-fields (commit 14).</strong> <code>h.version = 5</code> on a bit-field is compiled into load, mask, or, store of the whole word. The first assignment reads uninitialized bits, which differ between the variable and its copy, so the check on the store reports a corruption (<code>unions_bitfields</code>, depending on the stack contents). At the entry of every hardened function the content of each local variable is now copied into its duplicate.</p>
-<h2 id="calls-to-code-that-is-not-hardened-commits-3-4-7">4.3 Calls to code that is not hardened (commits 3, 4, 7)</h2>
-<p><strong>Re-synchronisation after a call (<code>r01</code>).</strong> After calling a function that has no <code>_dup</code> version (e.g. <code>printf</code>), EDDI copied the pointed value of every pointer argument from the original to the duplicate, in case the callee wrote it. The copy loaded and stored a <code>ptr</code>, i.e. 8 bytes whatever the pointed type: with a pointer to a string literal received as a parameter (the two copies point to the same constant) it wrote into read-only memory and the program crashed; with a 4-byte <code>int</code> it overflowed the duplicate; with a buffer it synchronised only its first 8 bytes. The five-line reproducer is <code>show("hello")</code> calling <code>printf("%s", label)</code>. Now arguments the callee cannot write through are skipped; distinct allocas and globals are synchronised entirely with a <code>memcpy</code>; any other pointer is synchronised for the size of its deduced type, and only when the two copies of the pointer differ at run time (otherwise the copy goes to a scratch buffer).</p>
-<p><strong>Callbacks (<code>r04</code>).</strong> A function passed as an argument was replaced with its <code>_dup</code> version, whose signature has every parameter twice: <code>qsort</code> then called it with the original arguments and the program crashed. The original function is now passed when the callee has no <code>_dup</code> version.</p>
-<p><strong><code>memmove</code> on shared memory (<code>r07</code>).</strong> Intrinsics are always duplicated. A heap buffer is not duplicated (<code>malloc</code> is called once), so the two copies of an overlapping <code>memmove</code> on it shift the data twice. The duplicated <code>memmove</code> now moves the destination onto itself when the two destinations are equal.</p>
-<h2 id="duplication-of-the-program-structure-commits-5-6-8-9-10-12">4.4 Duplication of the program structure (commits 5, 6, 8, 9, 10, 12)</h2>
-<p><strong>Initializers of the duplicated globals (<code>r05</code>).</strong> <code>int *p = &amp;x;</code> was duplicated as <code>p_dup = &amp;x</code> instead of <code>&amp;x_dup</code>: both copies of the program updated <code>x</code> through the pointers, <code>x_dup</code> stayed behind and the next check reported a corruption. The initializers of the duplicates are now remapped to the duplicated globals.</p>
-<p><strong>Nested constant expressions (<code>r06</code>).</strong> For <code>m[2][3] = 7</code> on a global two-dimensional array clang 21 emits a nested constant GEP, <code>gep(gep(@m, 0, 2), 0, 3)</code>; only one level was remapped, so the duplicated store wrote <code>m</code> instead of <code>m_dup</code>. Every constant expression operand is now rebuilt on top of the duplicated globals (<code>lexer_dfa</code>).</p>
-<p><strong>Variadic functions (<code>r08</code>).</strong> <code>FuncRetToRef</code> appended the return pointer after the variadic arguments, while it is the last <em>fixed</em> parameter of the <code>_ret</code> function (broken module). In EDDI, after <code>duplicateOperands</code> replaces the callee of a direct call with its <code>_dup</code> version, <code>getCalledFunction()</code> returns null, so the call was treated as indirect and the variadic arguments were duplicated too; the number of fixed arguments is now taken from the type of the call.</p>
-<p><strong>By-value parameters (<code>r09</code>).</strong> The <code>_dup</code> function got the attributes of the original parameters only on one of the two copies, while the calls had them on both: with <code>byval</code> structs caller and callee disagreed on how the arguments are passed. The attributes (except <code>sret</code>) are now on both copies, in the calls and in the functions.</p>
-<p><strong>Variable-length arrays (<code>r10</code>).</strong> The clone of an alloca is moved before the first non-alloca instruction of its block, i.e. before the computation of its size when the size is dynamic. Allocas with a non-constant size are now cloned in place.</p>
-<p><strong>Temporary duplicates (<code>r13</code>).</strong> When a call in a function that is not hardened needs a duplicate of a pointer argument, EDDI copies the pointed value into a temporary. The temporary was allocated at the call site and recorded in the map of the duplicates, so a second call in another block reused it without being dominated by it (broken module), or used a stale snapshot. The temporaries are now allocated in the entry block (no stack growth in loops) and forgotten after the call; the size of their <code>memcpy</code> was an <code>i8</code> (sizes above 255 bytes were truncated) and is now an <code>i64</code>. The temporary copy of a constant global that EDDI made for stores is removed: it lived in the stack frame of the current function, so a pointer to it stored in a global or returned dangled.</p>
-<h2 id="reddi-commit-13">4.5 REDDI (commit 13)</h2>
-<p>With REDDI only the <code>to_harden</code> functions are hardened. <code>FuncRetToRef</code> replaces the calls to a function returning a value with calls to its <code>_ret</code> version, which is not annotated: the hardened copy was never called and the program ran unprotected, with only the code duplicated on demand around the hardened globals (<code>r12</code>). There, a local variable was cloned without duplicating the stores that write it, and the comparison of the never-written copy reported a corruption. The <code>_ret</code> version of an annotated function is now hardened, its calls are redirected, and the stores to a local variable duplicated on demand are duplicated too.</p>
-<h2 id="control-flow-checking-commits-15-16-17">4.6 Control-flow checking (commits 15, 16, 17)</h2>
-<p><strong>setjmp/longjmp (<code>r11</code>).</strong> When <code>longjmp</code> returns to a <code>setjmp</code>, the run-time signatures still have the values they had where <code>longjmp</code> was called, and the next check reports a mismatch (with every CFC technique). After a <code>returns_twice</code> call the signatures are now set back to the values expected at that point of the block: <code>G</code> and <code>D</code> for CFCSS, the runtime signature for RASM, the signature plus the updates of the previous instructions for RACFED, and for inter-RASM also the ret signature, saved before the call.</p>
-<p><strong>Functions entered from code that is not hardened (<code>r14</code>).</strong> Inter-RASM expects the caller to set the signatures of the callee before every call. A function called back by <code>qsort</code>, a constructor, an <code>atexit</code> handler, or <code>main</code> after the constructors were entered with the signatures of another function. Now <code>main</code> and the functions whose address is taken set the runtime signature to the one of their first block, and the signatures are saved and restored around indirect calls and calls to functions that are not compiled. This is what makes <code>cpp_class</code>, <code>cpp_heap</code> and <code>cpp_template</code> pass with inter-RASM.</p>
-<p><strong>Verification blocks of EDDI (commit 17).</strong> RASM and RACFED reset the runtime signature, without checking it, in every block whose name contains “verification”. The test was meant for the blocks the passes create themselves, but it also matches the <code>VerificationBB</code> blocks that EDDI creates for its checks, which with EDDI are the successor of most blocks: a wrong branch or jump into one of them re-synchronised the signature and went undetected. No program fails because of it, so the compatibility tests could not find it; the fault injection did (Section 6.2). Now only landing pads and the blocks created by the pass itself are exempted.</p>
-<h2 id="other-observations">4.7 Other observations</h2>
-<ul>
-<li><strong>Non-deterministic output.</strong> Compiling the same file twice with EDDI gives different IR, because the instructions are visited in the order of a <code>std::set</code> of pointers; RACFED draws its signatures from <code>std::random_device</code>. The produced programs are correct, but a bug can appear in one compilation and not in the next (commit 11 was found this way), and fault-injection results are not reproducible bit by bit from the sources. A deterministic order and a seed would help.</li>
-<li><strong>The harness</strong> (Section 3.1): pytest-timeout leaves <code>opt</code> running, and the builds share <code>compiled_eddi_functions.csv</code>.</li>
-</ul>
-<h1 id="fault-injection">5. Fault injection</h1>
-<h2 id="fault-models">5.1 Fault models</h2>
-<p>We emulate single transient faults in the processor while the program runs its own code (never in libc or in the dynamic loader, which ASPIS does not harden). An experiment picks a <em>dynamic</em> instruction uniformly at random, i.e. a random instant of the execution, stops the program right before it and injects one fault:</p>
-<ul>
-<li><strong><code>reg</code></strong>: a bit-flip in one of the 16 general purpose registers (<code>rax</code> … <code>r15</code>, <code>rsp</code> included), random register and bit;</li>
-<li><strong><code>branch</code></strong>: at a random conditional jump, the outcome of the jump is inverted (a fault in the flags or in the branch unit);</li>
-<li><strong><code>jump</code></strong>: the program counter is set to the address of a random instruction of the program (an illegal control-flow transfer, the fault CFC is designed for).</li>
-</ul>
-<p>The register model does not cover the SSE registers, so faults in floating-point values (<code>fft</code>, <code>lu_solve</code>, <code>pid_control</code>) are represented only when they hit addresses, indices and integer values. Memory faults and multiple faults are out of scope.</p>
-<h2 id="the-injector">5.2 The injector</h2>
-<p><code>fault_injection/injector/fi.c</code> (about 700 lines of C) has three commands:</p>
-<ul>
-<li><code>fi profile</code> runs the program once under <code>ptrace</code> single-stepping, counts how many times each instruction of the executable runs and decodes the conditional jumps; it also saves the reference output (<em>golden run</em>);</li>
-<li><code>fi inject</code> runs N experiments: it draws the target (instruction, occurrence) from the profile, starts the program with address-space randomisation disabled (so that addresses are the same in every run), stops it right before the chosen occurrence, modifies the registers, detaches and waits for the end with a timeout;</li>
-<li><code>fi bench</code> measures the run time without tracing.</li>
-</ul>
-<p>Stopping at the <em>k</em>-th execution of an instruction is the expensive part: the simple way (an <code>int3</code> at the address, and at every hit: restore, single-step, re-insert) costs two <code>ptrace</code> stops per hit, and the hot instructions of the benchmarks run tens of thousands of times. The injector programs instead a hardware execution breakpoint with <code>perf_event_open</code> (<code>PERF_TYPE_BREAKPOINT</code>, <code>sample_period = k</code>, <code>sigtrap = 1</code>): the hits are counted by the kernel without stopping the program, and only the <em>k</em>-th one sends a synchronous <code>SIGTRAP</code>, before the instruction executes. In the virtual machine used for the campaign this is 2.4 times faster than the software method (90 ms against 220 ms per experiment on <code>aes128</code>), with identical results for the same seed; the software method remains as a fallback.</p>
-<p>Each experiment is classified, in this order, as: <em>hang</em> if the program did not end within 20 times its normal run time (at least 300 ms); <em>crash</em> if it was killed by a signal; <em>detected (data)</em> or <em>detected (CFC)</em> if the corresponding handler reported the fault (the handlers then exit); <em>masked</em> if its output and exit status are the ones of the golden run; <em>SDC</em> otherwise, which includes a wrong output and the program’s own self-check printing <code>FAIL</code>.</p>
-<h2 id="the-campaign">5.3 The campaign</h2>
-<p><code>fault_injection/campaign.py</code> builds each application with each configuration, profiles it, measures it and runs the injections in parallel (one process per core), caching every step so that it can be resumed. We used 11 configurations: the unprotected <code>baseline</code> (same pipeline, no transformation), the three data techniques that duplicate the whole program (EDDI, sEDDI, FDSC), the four CFC techniques alone (CFCSS, RASM, inter-RASM, RACFED), and EDDI combined with CFCSS, RASM and RACFED. REDDI is not included: it protects only annotated code, so its coverage depends on the annotations rather than on the technique. For each application, configuration and fault model we injected 1000 faults (300 for <code>sobel</code>, whose hot loops make each experiment about ten times slower than for the others), in chunks of 100 with seeds derived from the names (SHA-256), for a total of <strong>240,900 experiments</strong>. Proportions are given with 95% Wilson score intervals.</p>
-<h1 id="results-1">6. Results</h1>
-<h2 id="cost-of-the-protection">6.1 Cost of the protection</h2>
-<p>Data protection is the expensive part. EDDI executes 3.8 times the instructions of the unprotected program (geometric mean over the applications, between 3.2x and 4.3x), sEDDI 3.2x and FDSC 2.9x: every instruction is executed twice and each check adds a comparison and a branch (3250 checks in the 8 applications with EDDI, 1955 with sEDDI, 1524 with FDSC). The code grows much more than the execution (9.8x for EDDI): every hardened function exists in four versions (original, <code>_ret</code>, <code>_dup</code>, <code>_ret_dup</code>), each check splits a block in three, and ASPIS compiles at <code>-O0</code>, where every value goes through the stack. The versions that are no longer called stay in the binary: running <code>globaldce</code> before the back-end removes about 15% of the code of <code>aes128</code> and <code>sobel</code> with the same output.</p>
-<p>The control-flow techniques cost less but differ a lot: CFCSS 1.7x, RASM 2.5x, inter-RASM 4.1x (it also splits the blocks at the calls and, with our fixes, saves and restores the signatures around calls to external functions) and RACFED 7.2x, since it updates the signature after every instruction. Combined with EDDI the costs roughly add up: 5.6x with CFCSS, 6.2x with RASM and 17.9x with RACFED, whose binaries are 62 times larger than the unprotected ones.</p>
-<p>The fixes of Section 4 do not change these costs: on the six applications that the main branch can compile with EDDI (it crashes when they run), our version has the same number of checks and 1-3% more code (the null guards and the initialization of the duplicated locals). We do not report run times: the applications run for a few milliseconds, so the measurements are dominated by the start-up of the process and by the load of the machine; executed instructions are a precise and deterministic measure of the same cost.</p>
-<figure>
-<img src="figures/overhead.svg" alt="Code size and executed instructions of the hardened programs, relative to the unprotected build (bars: geometric mean over the 8 applications; dots: single applications)." />
-<figcaption aria-hidden="true">Code size and executed instructions of the hardened programs, relative to the unprotected build (bars: geometric mean over the 8 applications; dots: single applications).</figcaption>
-</figure>
-<table>
-<caption>Geometric mean over the 8 applications of the size of <code>.text</code> and of the instructions executed in the program’s code, relative to the baseline; total number of consistency checks inserted by the data protection pass in the 8 applications.</caption>
+<caption>Size of the code (<code>.text</code>) and executed instructions relative to the baseline (geometric mean over the four applications), and number of consistency checks inserted by EDDI in the four applications.</caption>
 <thead>
 <tr class="header">
 <th>configuration</th>
@@ -754,76 +349,230 @@
 </tr>
 <tr class="even">
 <td>EDDI</td>
-<td style="text-align: right;">9.79x</td>
-<td style="text-align: right;">3.82x</td>
-<td style="text-align: right;">3250</td>
-</tr>
-<tr class="odd">
-<td>sEDDI</td>
-<td style="text-align: right;">8.11x</td>
-<td style="text-align: right;">3.16x</td>
-<td style="text-align: right;">1955</td>
-</tr>
-<tr class="even">
-<td>FDSC</td>
-<td style="text-align: right;">7.64x</td>
-<td style="text-align: right;">2.93x</td>
-<td style="text-align: right;">1524</td>
+<td style="text-align: right;">9.18x</td>
+<td style="text-align: right;">3.78x</td>
+<td style="text-align: right;">1259</td>
 </tr>
 <tr class="odd">
 <td>CFCSS</td>
-<td style="text-align: right;">1.66x</td>
-<td style="text-align: right;">1.71x</td>
+<td style="text-align: right;">1.54x</td>
+<td style="text-align: right;">1.65x</td>
 <td style="text-align: right;">0</td>
 </tr>
 <tr class="even">
 <td>RASM</td>
-<td style="text-align: right;">2.10x</td>
-<td style="text-align: right;">2.47x</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="odd">
-<td>interRASM</td>
-<td style="text-align: right;">4.07x</td>
-<td style="text-align: right;">4.05x</td>
-<td style="text-align: right;">0</td>
-</tr>
-<tr class="even">
-<td>RACFED</td>
-<td style="text-align: right;">8.05x</td>
-<td style="text-align: right;">7.23x</td>
+<td style="text-align: right;">1.93x</td>
+<td style="text-align: right;">2.33x</td>
 <td style="text-align: right;">0</td>
 </tr>
 <tr class="odd">
 <td>EDDI+CFCSS</td>
-<td style="text-align: right;">14.93x</td>
-<td style="text-align: right;">5.62x</td>
-<td style="text-align: right;">3253</td>
+<td style="text-align: right;">13.56x</td>
+<td style="text-align: right;">5.51x</td>
+<td style="text-align: right;">1259</td>
 </tr>
 <tr class="even">
 <td>EDDI+RASM</td>
-<td style="text-align: right;">15.93x</td>
-<td style="text-align: right;">6.20x</td>
-<td style="text-align: right;">3252</td>
-</tr>
-<tr class="odd">
-<td>EDDI+RACFED</td>
-<td style="text-align: right;">62.50x</td>
-<td style="text-align: right;">17.85x</td>
-<td style="text-align: right;">3250</td>
+<td style="text-align: right;">14.40x</td>
+<td style="text-align: right;">5.99x</td>
+<td style="text-align: right;">1259</td>
 </tr>
 </tbody>
 </table>
-<h2 id="outcome-of-the-faults">6.2 Outcome of the faults</h2>
-<p><strong>Register bit-flips</strong> are mostly harmless: in the unprotected programs 85.8% of them are masked (the register is dead or overwritten), 12.3% crash the program (a corrupted pointer, often the stack pointer) and 1.86% silently corrupt the output. Data duplication removes most of the SDCs: EDDI leaves 0.14% (13.6 times fewer), sEDDI 0.12% and FDSC 0.42%. The checks detect only about 3% of the faults directly, but these are the ones that matter: a corrupted value is caught before it reaches a store, a call or a branch. The control-flow techniques alone leave between 0.70% (RASM) and 1.33% (inter-RASM), since only the bit-flips that derail the control flow can be caught by a signature. Combining EDDI with CFCSS gives the best protection against register faults: one SDC in 7300 faults (0.01%).</p>
-<p><strong>Inverted branches</strong> are the most harmful faults for these applications: 79.4% of them corrupt the output, because the result depends on how many times the loops run and on which path the data-dependent branches take. EDDI detects 73.9% of them and leaves 20.8% of SDCs, but the detections are partly an artefact of the fault model: the branches of the program are not duplicated (the two copies of the condition agree and the jump is taken once), and 75% of the conditional jumps executed by an EDDI program are those of its own checks, whose inversion calls the handler. RASM, inter-RASM and RACFED detect 99.4-99.5% of the inverted branches, because the signature update at the end of a block is selected by the same condition as the branch: a jump that disagrees with its condition lands in a block with the wrong signature. CFCSS, whose signatures only encode which blocks may follow each other, cannot tell the right successor from the wrong one and leaves 29.6% of SDCs. The few SDCs left by RASM and RACFED are all in <code>lu_solve</code> and <code>pid_control</code>, at conditional jumps that are not branches of the IR: at <code>-O0</code> the back-end implements a <code>select</code> between two floating-point values (e.g. <code>x &lt; 0 ? -x : x</code>) with a jump, which no IR-level technique can see.</p>
-<p><strong>Wrong jump targets</strong> crash 75.5% of the unprotected runs and corrupt the output in 19.6%. The control-flow techniques detect most of them: RACFED, whose updates after every instruction also catch jumps into the middle of a block, leaves 0.15% of SDCs, RASM 1.22%, inter-RASM 1.41%, CFCSS 2.95%. EDDI alone detects half of them, as a jump into the duplicated code soon makes the two copies disagree, and leaves 4.6%. EDDI with CFCSS leaves 0.23%.</p>
-<p><strong>EDDI with RASM or RACFED.</strong> In the first run of the campaign these two combinations were <em>worse</em> than RASM or RACFED alone on control-flow faults: 12.4% and 12.1% of SDCs for inverted branches (against 0.6%), 5.3% and 3.2% for wrong jumps (against 1.2% and 0.15%). Looking at where the undetected faults were injected, all the inverted branches that produced an SDC had as wrong target one of the verification blocks created by EDDI, where RASM and RACFED reset the signature instead of checking it: defect 23 of Section 4, fixed by commit 17. The two configurations were then rebuilt and the injections repeated; the figure and the tables of this section use the results after the fix, compared with the first run in the table below. After the fix the two combinations leave no SDC among the 7300 inverted branches (12.4% and 12.1% before), and 1.70% and 0.10% of the wrong jumps (5.25% and 3.18% before). The two families now cover each other: the signatures catch the branches taken the wrong way, which EDDI cannot see, and the duplicated computation catches the wrong values chosen by the jumps of the floating-point <code>select</code>s, which the signatures cannot see. The price is a slightly higher cost, since the verification blocks are now checked: 6.2 and 17.9 times the executed instructions of the baseline (5.5 and 16.9 before).</p>
+<figure>
+<img src="figures/cost.svg" alt="Code size and executed instructions relative to the unprotected program (bars: geometric mean over the four applications; dots: single applications)." />
+<figcaption aria-hidden="true">Code size and executed instructions relative to the unprotected program (bars: geometric mean over the four applications; dots: single applications).</figcaption>
+</figure>
+<p>Data duplication is the expensive part. EDDI executes 3.8 times the instructions of the unprotected program (geometric mean over the applications, between 3.6x and 4.1x): every instruction is executed twice, and each of its 1259 checks adds comparisons and a branch. The code grows much more than the execution (9.2x), because every function exists in up to four versions (original, <code>_ret</code>, <code>_dup</code>, <code>_ret_dup</code>), each check splits a block, and without optimisations every value goes through the stack. The control-flow techniques cost less: 1.7x the executed instructions for CFCSS and 2.3x for RASM. Combined with EDDI the costs add up: 5.5x with CFCSS and 6.0x with RASM.</p>
+<h2 id="register-bit-flips">5.2 Register bit-flips</h2>
+<figure>
+<img src="figures/fi_outcomes.svg" alt="Outcome of the injected faults (4000 per configuration and fault model). The number at the right of each bar is the share of silent data corruptions." />
+<figcaption aria-hidden="true">Outcome of the injected faults (4000 per configuration and fault model). The number at the right of each bar is the share of silent data corruptions.</figcaption>
+</figure>
 <table>
-<caption>EDDI combined with RASM and RACFED, before and after the fix of commit 17 (7,300 faults per row).</caption>
+<caption>Register bit-flips: outcome of the injections (% of n faults, pooled over the four applications), with the 95% confidence interval of the SDC rate.</caption>
 <thead>
 <tr class="header">
 <th>configuration</th>
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">masked</th>
+<th style="text-align: right;">detected (data)</th>
+<th style="text-align: right;">detected (CFC)</th>
+<th style="text-align: right;">crash</th>
+<th style="text-align: right;">hang</th>
+<th style="text-align: right;">SDC</th>
+<th style="text-align: right;">SDC 95% CI</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>baseline</td>
+<td style="text-align: right;">4000</td>
+<td style="text-align: right;">86.2</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">12.0</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">1.70</td>
+<td style="text-align: right;">1.34–2.15</td>
+</tr>
+<tr class="even">
+<td>EDDI</td>
+<td style="text-align: right;">4000</td>
+<td style="text-align: right;">84.0</td>
+<td style="text-align: right;">2.9</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">13.0</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.15</td>
+<td style="text-align: right;">0.07–0.33</td>
+</tr>
+<tr class="odd">
+<td>CFCSS</td>
+<td style="text-align: right;">4000</td>
+<td style="text-align: right;">85.5</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">2.1</td>
+<td style="text-align: right;">11.5</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">0.63–1.21</td>
+</tr>
+<tr class="even">
+<td>RASM</td>
+<td style="text-align: right;">4000</td>
+<td style="text-align: right;">85.8</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">2.2</td>
+<td style="text-align: right;">11.3</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.65</td>
+<td style="text-align: right;">0.44–0.95</td>
+</tr>
+<tr class="odd">
+<td>EDDI+CFCSS</td>
+<td style="text-align: right;">4000</td>
+<td style="text-align: right;">83.4</td>
+<td style="text-align: right;">1.3</td>
+<td style="text-align: right;">2.5</td>
+<td style="text-align: right;">12.8</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.03</td>
+<td style="text-align: right;">0.00–0.14</td>
+</tr>
+<tr class="even">
+<td>EDDI+RASM</td>
+<td style="text-align: right;">4000</td>
+<td style="text-align: right;">83.3</td>
+<td style="text-align: right;">2.0</td>
+<td style="text-align: right;">1.6</td>
+<td style="text-align: right;">13.1</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.03</td>
+<td style="text-align: right;">0.00–0.14</td>
+</tr>
+</tbody>
+</table>
+<p>Register bit-flips are mostly harmless: in the unprotected programs 86.2% of them are masked (the register was not in use, or was overwritten before being read), 12.0% crash the program (for example a corrupted address) and 1.70% silently corrupt the output. EDDI leaves 0.15% of SDCs, 11 times fewer. Its checks detect only 2.9% of the faults, but these are the dangerous ones: a wrong value is caught before it reaches a store, a call or a branch. The control-flow techniques alone leave 0.88% (CFCSS) and 0.65% (RASM), since a signature only sees the bit-flips that change the path of the program. Combined with EDDI they leave one SDC in 4000 faults (0.03%).</p>
+<h2 id="inverted-branches">5.3 Inverted branches</h2>
+<table>
+<caption>Inverted branches: outcome of the injections (% of n faults, pooled over the four applications).</caption>
+<thead>
+<tr class="header">
+<th>configuration</th>
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">masked</th>
+<th style="text-align: right;">detected (data)</th>
+<th style="text-align: right;">detected (CFC)</th>
+<th style="text-align: right;">crash</th>
+<th style="text-align: right;">hang</th>
+<th style="text-align: right;">SDC</th>
+<th style="text-align: right;">SDC 95% CI</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>baseline</td>
+<td style="text-align: right;">4000</td>
+<td style="text-align: right;">21.2</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">78.80</td>
+<td style="text-align: right;">77.51–80.04</td>
+</tr>
+<tr class="even">
+<td>EDDI</td>
+<td style="text-align: right;">4000</td>
+<td style="text-align: right;">4.6</td>
+<td style="text-align: right;">76.8</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">18.57</td>
+<td style="text-align: right;">17.40–19.81</td>
+</tr>
+<tr class="odd">
+<td>CFCSS</td>
+<td style="text-align: right;">4000</td>
+<td style="text-align: right;">7.5</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">62.6</td>
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">29.75</td>
+<td style="text-align: right;">28.35–31.19</td>
+</tr>
+<tr class="even">
+<td>RASM</td>
+<td style="text-align: right;">4000</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">99.3</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.73</td>
+<td style="text-align: right;">0.51–1.04</td>
+</tr>
+<tr class="odd">
+<td>EDDI+CFCSS</td>
+<td style="text-align: right;">4000</td>
+<td style="text-align: right;">2.1</td>
+<td style="text-align: right;">35.5</td>
+<td style="text-align: right;">54.2</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">8.18</td>
+<td style="text-align: right;">7.37–9.06</td>
+</tr>
+<tr class="even">
+<td>EDDI+RASM</td>
+<td style="text-align: right;">4000</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">34.0</td>
+<td style="text-align: right;">66.0</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">0.00–0.10</td>
+</tr>
+</tbody>
+</table>
+<p>Inverted branches are the most harmful faults: 78.8% of them corrupt the output of the unprotected programs, because the results depend on how many times the loops run and on which path the data-dependent branches take.</p>
+<p>EDDI and CFCSS detect only the inversions of the jumps of their own checks. From the profiles of the golden runs, 76.3% of the conditional jumps executed by the programs hardened with EDDI belong to its checks, and 62.4% with CFCSS: an inverted check jumps to the error handler. These are almost exactly their detection rates (76.8% and 62.6%). The inversions of the program’s own branches are not seen. EDDI compares the two copies of the condition before the jump, but then executes a single jump, so both copies of the data follow the wrong path; CFCSS only checks that the program follows an edge of the control-flow graph, and the wrong successor of a branch is an edge too. They leave 18.6% and 29.8% of SDCs.</p>
+<p>RASM detects 99.3% of the inverted branches: before leaving a block it updates the signature using the same condition as the jump, so a jump in the other direction reaches a block that expects a different signature. All its 29 SDCs (0.73%) come from a single conditional jump of <code>pid_control</code> that is not a branch of the IR: in <code>load_at</code>, <code>return (k &gt;= 1200 &amp;&amp; k &lt; 1300) ? 1.5f : 0.0f;</code> is a <code>select</code> between two floats, which the x86 back-end implements with a jump when it does not optimise. No technique working on the IR can see that jump. EDDI with CFCSS leaves 8.2% of SDCs; EDDI with RASM none, because EDDI duplicates the <code>select</code> too, and a wrong jump in one copy makes the two copies differ.</p>
+<h2 id="bug-3-found-by-the-fault-injection">5.4 Bug 3, found by the fault injection</h2>
+<p>In the first run of the campaign EDDI+RASM left 10.5% of SDCs with inverted branches, much more than RASM alone (0.73%), although it adds the checks of EDDI to those of RASM. With <code>fault_injection/sdc_sites.py</code>, which maps the SDCs to the instructions where the faults were injected and shows the successors of the jumps, we found that all the 421 SDCs happened at conditional jumps whose two successors start by writing a constant into the signature of RASM, instead of checking it.</p>
+<p>The cause is in <code>RASM.cpp</code>: a block whose name contains “verification” is treated as a block created by RASM itself, and its signature is reset to the expected value without a check. The test was meant for the blocks of RASM (<code>RASM_Verification_BB</code>), but it also matches the <code>VerificationBB</code> blocks created by EDDI, which are the successors of most blocks of a program hardened with EDDI. A jump into the wrong one of them re-synchronised the signature and went undetected:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode llvm"><code class="sourceCode llvm"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>  <span class="kw">br</span> <span class="dt">i1</span> <span class="fu">%8</span>, <span class="dt">label</span> <span class="fu">%VerificationBB2</span>, <span class="dt">label</span> <span class="fu">%VerificationBB3</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">VerificationBB2:</span>                        <span class="co">; created by EDDI</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">store</span> volatile <span class="dt">i32</span> <span class="dv">24</span>, ptr <span class="fu">%2</span>         <span class="co">; RASM resets the signature, no check</span></span></code></pre></div>
+<p><strong>Fix</strong> (patch 0003). Only the blocks whose name starts with <code>RASM_</code> (and the landing pads of C++ exceptions) are exempted; the <code>VerificationBB</code> blocks get the entry check like any other block. RACFED had the same code and is fixed in the same way. With the fix EDDI+RASM leaves no SDC among the 4000 inverted branches, and its signature checks detect 66.0% of them instead of 34.6%; the rest is detected by the checks of EDDI.</p>
+<table>
+<caption>EDDI+RASM before and after the fix of RASM (4000 faults per row).</caption>
+<thead>
+<tr class="header">
 <th>fault model</th>
 <th style="text-align: right;">SDC before</th>
 <th style="text-align: right;">SDC after</th>
@@ -833,493 +582,33 @@
 </thead>
 <tbody>
 <tr class="odd">
-<td>EDDI+RASM</td>
 <td>Register bit-flip</td>
-<td style="text-align: right;">0.14%</td>
 <td style="text-align: right;">0.10%</td>
+<td style="text-align: right;">0.03%</td>
 <td style="text-align: right;">0.5%</td>
-<td style="text-align: right;">1.5%</td>
+<td style="text-align: right;">1.6%</td>
 </tr>
 <tr class="even">
-<td>EDDI+RASM</td>
 <td>Inverted branch</td>
-<td style="text-align: right;">12.44%</td>
+<td style="text-align: right;">10.53%</td>
 <td style="text-align: right;">0.00%</td>
-<td style="text-align: right;">34.4%</td>
-<td style="text-align: right;">67.3%</td>
-</tr>
-<tr class="odd">
-<td>EDDI+RASM</td>
-<td>Wrong jump target</td>
-<td style="text-align: right;">5.25%</td>
-<td style="text-align: right;">1.70%</td>
-<td style="text-align: right;">12.8%</td>
-<td style="text-align: right;">45.8%</td>
-</tr>
-<tr class="even">
-<td>EDDI+RACFED</td>
-<td>Register bit-flip</td>
-<td style="text-align: right;">0.12%</td>
-<td style="text-align: right;">0.08%</td>
-<td style="text-align: right;">1.8%</td>
-<td style="text-align: right;">4.0%</td>
-</tr>
-<tr class="odd">
-<td>EDDI+RACFED</td>
-<td>Inverted branch</td>
-<td style="text-align: right;">12.14%</td>
-<td style="text-align: right;">0.00%</td>
-<td style="text-align: right;">35.0%</td>
-<td style="text-align: right;">67.2%</td>
-</tr>
-<tr class="even">
-<td>EDDI+RACFED</td>
-<td>Wrong jump target</td>
-<td style="text-align: right;">3.18%</td>
-<td style="text-align: right;">0.10%</td>
-<td style="text-align: right;">10.5%</td>
-<td style="text-align: right;">39.4%</td>
+<td style="text-align: right;">34.6%</td>
+<td style="text-align: right;">66.0%</td>
 </tr>
 </tbody>
 </table>
-<figure>
-<img src="figures/fi_outcomes.svg" alt="Outcome of the faults injected in the 8 applications (7,300 per configuration and fault model). The number at the right of each bar is the share of silent data corruptions." />
-<figcaption aria-hidden="true">Outcome of the faults injected in the 8 applications (7,300 per configuration and fault model). The number at the right of each bar is the share of silent data corruptions.</figcaption>
-</figure>
+<h2 id="per-application">5.5 Per application</h2>
 <table>
-<caption>Register bit-flips: outcome of the injections (% of n faults, pooled over the 8 applications), with the 95% Wilson interval of the SDC rate.</caption>
+<caption>SDC rate (%) of register bit-flips per application (1000 faults each).</caption>
 <thead>
 <tr class="header">
-<th>configuration</th>
-<th style="text-align: right;">n</th>
-<th style="text-align: right;">masked</th>
-<th style="text-align: right;">detected (data)</th>
-<th style="text-align: right;">detected (CFC)</th>
-<th style="text-align: right;">crash</th>
-<th style="text-align: right;">hang</th>
-<th style="text-align: right;">SDC</th>
-<th style="text-align: right;">SDC 95% CI</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>baseline</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">85.8</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">12.3</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">1.86</td>
-<td style="text-align: right;">1.58–2.20</td>
-</tr>
-<tr class="even">
-<td>EDDI</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">82.6</td>
-<td style="text-align: right;">3.1</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">14.2</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.14</td>
-<td style="text-align: right;">0.07–0.25</td>
-</tr>
-<tr class="odd">
-<td>sEDDI</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">82.4</td>
-<td style="text-align: right;">2.8</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">14.7</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.12</td>
-<td style="text-align: right;">0.06–0.23</td>
-</tr>
-<tr class="even">
-<td>FDSC</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">82.7</td>
-<td style="text-align: right;">2.2</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">14.7</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.42</td>
-<td style="text-align: right;">0.30–0.60</td>
-</tr>
-<tr class="odd">
-<td>CFCSS</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">84.8</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">2.2</td>
-<td style="text-align: right;">12.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.93</td>
-<td style="text-align: right;">0.74–1.18</td>
-</tr>
-<tr class="even">
-<td>RASM</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">85.2</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">2.4</td>
-<td style="text-align: right;">11.7</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.70</td>
-<td style="text-align: right;">0.53–0.92</td>
-</tr>
-<tr class="odd">
-<td>interRASM</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">85.1</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">1.6</td>
-<td style="text-align: right;">12.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">1.33</td>
-<td style="text-align: right;">1.09–1.62</td>
-</tr>
-<tr class="even">
-<td>RACFED</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">79.5</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">4.6</td>
-<td style="text-align: right;">14.7</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">1.23</td>
-<td style="text-align: right;">1.00–1.51</td>
-</tr>
-<tr class="odd">
-<td>EDDI+CFCSS</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">83.0</td>
-<td style="text-align: right;">1.9</td>
-<td style="text-align: right;">2.4</td>
-<td style="text-align: right;">12.7</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.01</td>
-<td style="text-align: right;">0.00–0.08</td>
-</tr>
-<tr class="even">
-<td>EDDI+RASM</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">83.3</td>
-<td style="text-align: right;">2.4</td>
-<td style="text-align: right;">1.5</td>
-<td style="text-align: right;">12.7</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.10</td>
-<td style="text-align: right;">0.05–0.20</td>
-</tr>
-<tr class="odd">
-<td>EDDI+RACFED</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">77.0</td>
-<td style="text-align: right;">2.5</td>
-<td style="text-align: right;">4.0</td>
-<td style="text-align: right;">16.4</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.08</td>
-<td style="text-align: right;">0.04–0.18</td>
-</tr>
-</tbody>
-</table>
-<table>
-<caption>Inverted branches: outcome of the injections (% of n faults, pooled over the 8 applications).</caption>
-<thead>
-<tr class="header">
-<th>configuration</th>
-<th style="text-align: right;">n</th>
-<th style="text-align: right;">masked</th>
-<th style="text-align: right;">detected (data)</th>
-<th style="text-align: right;">detected (CFC)</th>
-<th style="text-align: right;">crash</th>
-<th style="text-align: right;">hang</th>
-<th style="text-align: right;">SDC</th>
-<th style="text-align: right;">SDC 95% CI</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>baseline</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">19.5</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">1.1</td>
-<td style="text-align: right;">0.1</td>
-<td style="text-align: right;">79.36</td>
-<td style="text-align: right;">78.41–80.27</td>
-</tr>
-<tr class="even">
-<td>EDDI</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">4.8</td>
-<td style="text-align: right;">73.9</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.4</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">20.82</td>
-<td style="text-align: right;">19.91–21.77</td>
-</tr>
-<tr class="odd">
-<td>sEDDI</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">7.9</td>
-<td style="text-align: right;">59.6</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">31.93</td>
-<td style="text-align: right;">30.87–33.01</td>
-</tr>
-<tr class="even">
-<td>FDSC</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">8.7</td>
-<td style="text-align: right;">56.1</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">34.59</td>
-<td style="text-align: right;">33.51–35.69</td>
-</tr>
-<tr class="odd">
-<td>CFCSS</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">6.9</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">62.9</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">29.64</td>
-<td style="text-align: right;">28.61–30.70</td>
-</tr>
-<tr class="even">
-<td>RASM</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">99.4</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.62</td>
-<td style="text-align: right;">0.46–0.82</td>
-</tr>
-<tr class="odd">
-<td>interRASM</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">99.5</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.49</td>
-<td style="text-align: right;">0.36–0.68</td>
-</tr>
-<tr class="even">
-<td>RACFED</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">99.4</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.58</td>
-<td style="text-align: right;">0.43–0.78</td>
-</tr>
-<tr class="odd">
-<td>EDDI+CFCSS</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">2.4</td>
-<td style="text-align: right;">33.8</td>
-<td style="text-align: right;">54.1</td>
-<td style="text-align: right;">0.3</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">9.37</td>
-<td style="text-align: right;">8.72–10.06</td>
-</tr>
-<tr class="even">
-<td>EDDI+RASM</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">32.7</td>
-<td style="text-align: right;">67.3</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.00</td>
-<td style="text-align: right;">0.00–0.05</td>
-</tr>
-<tr class="odd">
-<td>EDDI+RACFED</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">32.8</td>
-<td style="text-align: right;">67.2</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.00</td>
-<td style="text-align: right;">0.00–0.05</td>
-</tr>
-</tbody>
-</table>
-<table>
-<caption>Wrong jump targets: outcome of the injections (% of n faults, pooled over the 8 applications).</caption>
-<thead>
-<tr class="header">
-<th>configuration</th>
-<th style="text-align: right;">n</th>
-<th style="text-align: right;">masked</th>
-<th style="text-align: right;">detected (data)</th>
-<th style="text-align: right;">detected (CFC)</th>
-<th style="text-align: right;">crash</th>
-<th style="text-align: right;">hang</th>
-<th style="text-align: right;">SDC</th>
-<th style="text-align: right;">SDC 95% CI</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>baseline</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">2.6</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">75.5</td>
-<td style="text-align: right;">2.3</td>
-<td style="text-align: right;">19.62</td>
-<td style="text-align: right;">18.72–20.54</td>
-</tr>
-<tr class="even">
-<td>EDDI</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">1.6</td>
-<td style="text-align: right;">50.9</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">42.9</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">4.60</td>
-<td style="text-align: right;">4.15–5.11</td>
-</tr>
-<tr class="odd">
-<td>sEDDI</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">2.0</td>
-<td style="text-align: right;">38.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">54.6</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">5.45</td>
-<td style="text-align: right;">4.95–6.00</td>
-</tr>
-<tr class="even">
-<td>FDSC</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">1.7</td>
-<td style="text-align: right;">31.9</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">60.8</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">5.63</td>
-<td style="text-align: right;">5.12–6.18</td>
-</tr>
-<tr class="odd">
-<td>CFCSS</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">67.1</td>
-<td style="text-align: right;">29.1</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">2.95</td>
-<td style="text-align: right;">2.58–3.36</td>
-</tr>
-<tr class="even">
-<td>RASM</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">78.2</td>
-<td style="text-align: right;">20.1</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">1.22</td>
-<td style="text-align: right;">0.99–1.50</td>
-</tr>
-<tr class="odd">
-<td>interRASM</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">0.4</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">64.6</td>
-<td style="text-align: right;">33.5</td>
-<td style="text-align: right;">0.1</td>
-<td style="text-align: right;">1.41</td>
-<td style="text-align: right;">1.16–1.71</td>
-</tr>
-<tr class="even">
-<td>RACFED</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">0.1</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">61.6</td>
-<td style="text-align: right;">38.1</td>
-<td style="text-align: right;">0.1</td>
-<td style="text-align: right;">0.15</td>
-<td style="text-align: right;">0.08–0.27</td>
-</tr>
-<tr class="odd">
-<td>EDDI+CFCSS</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">0.2</td>
-<td style="text-align: right;">4.8</td>
-<td style="text-align: right;">77.6</td>
-<td style="text-align: right;">17.2</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.23</td>
-<td style="text-align: right;">0.15–0.37</td>
-</tr>
-<tr class="even">
-<td>EDDI+RASM</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">0.6</td>
-<td style="text-align: right;">31.2</td>
-<td style="text-align: right;">45.8</td>
-<td style="text-align: right;">20.6</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">1.70</td>
-<td style="text-align: right;">1.43–2.02</td>
-</tr>
-<tr class="odd">
-<td>EDDI+RACFED</td>
-<td style="text-align: right;">7300</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">24.8</td>
-<td style="text-align: right;">39.4</td>
-<td style="text-align: right;">35.7</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.10</td>
-<td style="text-align: right;">0.05–0.20</td>
-</tr>
-</tbody>
-</table>
-<h2 id="per-application">6.3 Per application</h2>
-<table>
-<caption>SDC rate (%) of register bit-flips, per application and configuration (1000 injections each, 300 for <code>sobel</code>).</caption>
-<thead>
-<tr class="header">
-<th>benchmark</th>
+<th>application</th>
 <th style="text-align: right;">baseline</th>
 <th style="text-align: right;">EDDI</th>
-<th style="text-align: right;">sEDDI</th>
-<th style="text-align: right;">FDSC</th>
 <th style="text-align: right;">CFCSS</th>
 <th style="text-align: right;">RASM</th>
-<th style="text-align: right;">interRASM</th>
-<th style="text-align: right;">RACFED</th>
 <th style="text-align: right;">EDDI+CFCSS</th>
 <th style="text-align: right;">EDDI+RASM</th>
-<th style="text-align: right;">EDDI+RACFED</th>
 </tr>
 </thead>
 <tbody>
@@ -1327,41 +616,8 @@
 <td>aes128</td>
 <td style="text-align: right;">2.2</td>
 <td style="text-align: right;">0.2</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">1.7</td>
 <td style="text-align: right;">0.8</td>
 <td style="text-align: right;">0.5</td>
-<td style="text-align: right;">1.0</td>
-<td style="text-align: right;">1.6</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.0</td>
-</tr>
-<tr class="even">
-<td>bst_dict</td>
-<td style="text-align: right;">1.1</td>
-<td style="text-align: right;">0.1</td>
-<td style="text-align: right;">0.1</td>
-<td style="text-align: right;">0.3</td>
-<td style="text-align: right;">0.1</td>
-<td style="text-align: right;">0.1</td>
-<td style="text-align: right;">0.4</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.3</td>
-<td style="text-align: right;">0.3</td>
-</tr>
-<tr class="odd">
-<td>expr_vm</td>
-<td style="text-align: right;">2.9</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.1</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">1.8</td>
-<td style="text-align: right;">1.2</td>
-<td style="text-align: right;">1.3</td>
-<td style="text-align: right;">1.3</td>
-<td style="text-align: right;">0.1</td>
 <td style="text-align: right;">0.0</td>
 <td style="text-align: right;">0.0</td>
 </tr>
@@ -1369,191 +625,130 @@
 <td>fft</td>
 <td style="text-align: right;">1.3</td>
 <td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.0</td>
 <td style="text-align: right;">0.8</td>
 <td style="text-align: right;">0.9</td>
-<td style="text-align: right;">3.0</td>
-<td style="text-align: right;">1.3</td>
 <td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.1</td>
 <td style="text-align: right;">0.0</td>
 </tr>
 <tr class="odd">
 <td>huffman</td>
 <td style="text-align: right;">1.6</td>
-<td style="text-align: right;">0.1</td>
-<td style="text-align: right;">0.2</td>
-<td style="text-align: right;">0.4</td>
+<td style="text-align: right;">0.0</td>
 <td style="text-align: right;">0.4</td>
 <td style="text-align: right;">0.9</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">1.6</td>
-<td style="text-align: right;">0.0</td>
 <td style="text-align: right;">0.1</td>
-<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">0.1</td>
 </tr>
 <tr class="even">
-<td>lu_solve</td>
-<td style="text-align: right;">2.0</td>
-<td style="text-align: right;">0.2</td>
-<td style="text-align: right;">0.3</td>
-<td style="text-align: right;">0.5</td>
-<td style="text-align: right;">1.1</td>
-<td style="text-align: right;">1.0</td>
-<td style="text-align: right;">1.9</td>
-<td style="text-align: right;">0.8</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.2</td>
-<td style="text-align: right;">0.2</td>
-</tr>
-<tr class="odd">
 <td>pid_control</td>
-<td style="text-align: right;">1.8</td>
-<td style="text-align: right;">0.1</td>
-<td style="text-align: right;">0.2</td>
-<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">1.7</td>
+<td style="text-align: right;">0.4</td>
 <td style="text-align: right;">1.5</td>
 <td style="text-align: right;">0.3</td>
-<td style="text-align: right;">0.9</td>
-<td style="text-align: right;">1.1</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.1</td>
-</tr>
-<tr class="even">
-<td>sobel</td>
-<td style="text-align: right;">2.3</td>
-<td style="text-align: right;">1.0</td>
-<td style="text-align: right;">0.0</td>
-<td style="text-align: right;">0.3</td>
-<td style="text-align: right;">1.0</td>
-<td style="text-align: right;">0.7</td>
-<td style="text-align: right;">2.3</td>
-<td style="text-align: right;">2.7</td>
-<td style="text-align: right;">0.0</td>
 <td style="text-align: right;">0.0</td>
 <td style="text-align: right;">0.0</td>
 </tr>
 </tbody>
 </table>
-<p>The unprotected applications have similar SDC rates for register faults (between 1.1% for <code>bst_dict</code> and 2.9% for <code>expr_vm</code>). EDDI and sEDDI bring all of them to 0.3% or less, with one exception in <code>sobel</code> (3 SDCs out of 300 faults for EDDI; with 300 faults the intervals are wide). FDSC follows EDDI except on <code>aes128</code> (1.7% against 0.2%): the rounds of AES are long straight-line sequences of table look-ups and stores, and FDSC checks only at a subset of the synchronisation points, so a corrupted byte can be stored and propagate without passing through a check. The control-flow techniques alone do not reduce register SDCs in a consistent way: inter-RASM on <code>fft</code> even shows more of them than the unprotected build (3.0% against 1.3%), an effect we did not investigate further. The per-application tables of the other fault models are in <code>results/fault_injection/</code> (generated as <code>report/tables/fi_sdc_branch.md</code> and <code>fi_sdc_jump.md</code>).</p>
-<h2 id="cost-effectiveness">6.4 Cost-effectiveness</h2>
-<p>The SDC rate per injected fault does not tell the whole story: a hardened program runs longer, so it is hit by proportionally more faults. If faults arrive uniformly in time, the probability that a run ends with an SDC is proportional to the SDC rate multiplied by the executed instructions, and its inverse, the <em>mean work to failure</em> (MWTF), measures the improvement in reliability for the same amount of work.</p>
-<p>For register faults sEDDI has the best ratio among the single techniques (4.8x): it removes as many SDCs as EDDI (3.6x) with fewer checks, while FDSC gains only 1.5x. EDDI with CFCSS reaches 24x. The control-flow techniques alone barely help against register faults (1.1x for RASM, 1.2x for CFCSS), and inter-RASM and RACFED even lower the MWTF (0.3x and 0.2x): they cost more than they protect. For control-flow faults the ranking is reversed: RASM improves the MWTF by 52x for inverted branches and 6.5x for wrong jumps, inter-RASM by 40x and 3.4x, RACFED by 19x and 18x, CFCSS by only 1.6x and 3.9x, while the data techniques stay around 1x. With the fix, EDDI with RACFED removes 205 times the SDCs of wrong jumps (11.5x MWTF) and the combinations of EDDI with RASM or RACFED leave no SDC for inverted branches; EDDI with CFCSS remains the best compromise when all three fault models matter (24x, 1.5x and 15x).</p>
 <table>
-<caption>Each cell: reduction of the SDC rate with respect to the baseline / gain in mean work to failure (MWTF), which also accounts for the longer exposure of the hardened program to faults (SDC rate times executed instructions).</caption>
+<caption>SDC rate (%) of inverted branches per application (1000 faults each).</caption>
 <thead>
 <tr class="header">
-<th>configuration</th>
-<th style="text-align: right;">register bit-flip</th>
-<th style="text-align: right;">inverted branch</th>
-<th style="text-align: right;">wrong jump target</th>
+<th>application</th>
+<th style="text-align: right;">baseline</th>
+<th style="text-align: right;">EDDI</th>
+<th style="text-align: right;">CFCSS</th>
+<th style="text-align: right;">RASM</th>
+<th style="text-align: right;">EDDI+CFCSS</th>
+<th style="text-align: right;">EDDI+RASM</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td>baseline</td>
-<td style="text-align: right;">1.0x / 1.0x</td>
-<td style="text-align: right;">1.0x / 1.0x</td>
-<td style="text-align: right;">1.0x / 1.0x</td>
+<td>aes128</td>
+<td style="text-align: right;">88.8</td>
+<td style="text-align: right;">22.9</td>
+<td style="text-align: right;">31.8</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">10.0</td>
+<td style="text-align: right;">0.0</td>
 </tr>
 <tr class="even">
-<td>EDDI</td>
-<td style="text-align: right;">13.6x / 3.6x</td>
-<td style="text-align: right;">3.8x / 1.0x</td>
-<td style="text-align: right;">4.3x / 1.1x</td>
+<td>fft</td>
+<td style="text-align: right;">66.8</td>
+<td style="text-align: right;">13.6</td>
+<td style="text-align: right;">23.7</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">5.6</td>
+<td style="text-align: right;">0.0</td>
 </tr>
 <tr class="odd">
-<td>sEDDI</td>
-<td style="text-align: right;">15.1x / 4.8x</td>
-<td style="text-align: right;">2.5x / 0.8x</td>
-<td style="text-align: right;">3.6x / 1.1x</td>
+<td>huffman</td>
+<td style="text-align: right;">89.7</td>
+<td style="text-align: right;">24.9</td>
+<td style="text-align: right;">30.0</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">10.7</td>
+<td style="text-align: right;">0.0</td>
 </tr>
 <tr class="even">
-<td>FDSC</td>
-<td style="text-align: right;">4.4x / 1.5x</td>
-<td style="text-align: right;">2.3x / 0.8x</td>
-<td style="text-align: right;">3.5x / 1.2x</td>
-</tr>
-<tr class="odd">
-<td>CFCSS</td>
-<td style="text-align: right;">2.0x / 1.2x</td>
-<td style="text-align: right;">2.7x / 1.6x</td>
-<td style="text-align: right;">6.7x / 3.9x</td>
-</tr>
-<tr class="even">
-<td>RASM</td>
-<td style="text-align: right;">2.7x / 1.1x</td>
-<td style="text-align: right;">128.7x / 52.0x</td>
-<td style="text-align: right;">16.1x / 6.5x</td>
-</tr>
-<tr class="odd">
-<td>interRASM</td>
-<td style="text-align: right;">1.4x / 0.3x</td>
-<td style="text-align: right;">160.9x / 39.8x</td>
-<td style="text-align: right;">13.9x / 3.4x</td>
-</tr>
-<tr class="even">
-<td>RACFED</td>
-<td style="text-align: right;">1.5x / 0.2x</td>
-<td style="text-align: right;">137.9x / 19.1x</td>
-<td style="text-align: right;">130.2x / 18.0x</td>
-</tr>
-<tr class="odd">
-<td>EDDI+CFCSS</td>
-<td style="text-align: right;">136.0x / 24.2x</td>
-<td style="text-align: right;">8.5x / 1.5x</td>
-<td style="text-align: right;">84.2x / 15.0x</td>
-</tr>
-<tr class="even">
-<td>EDDI+RASM</td>
-<td style="text-align: right;">19.4x / 3.1x</td>
-<td style="text-align: right;">no SDC</td>
-<td style="text-align: right;">11.5x / 1.9x</td>
-</tr>
-<tr class="odd">
-<td>EDDI+RACFED</td>
-<td style="text-align: right;">22.7x / 1.3x</td>
-<td style="text-align: right;">no SDC</td>
-<td style="text-align: right;">204.6x / 11.5x</td>
+<td>pid_control</td>
+<td style="text-align: right;">69.9</td>
+<td style="text-align: right;">12.9</td>
+<td style="text-align: right;">33.5</td>
+<td style="text-align: right;">2.9</td>
+<td style="text-align: right;">6.4</td>
+<td style="text-align: right;">0.0</td>
 </tr>
 </tbody>
 </table>
-<figure>
-<img src="figures/tradeoff.svg" alt="SDC rate of register bit-flips against the executed instructions, per configuration." />
-<figcaption aria-hidden="true">SDC rate of register bit-flips against the executed instructions, per configuration.</figcaption>
-</figure>
-<h1 id="integration-into-aspis">7. Integration into ASPIS</h1>
-<p><code>ASPIS-Project/aspis-integration/</code> contains what is needed to merge the work into the main branch:</p>
+<p>The unprotected applications have similar SDC rates for register bit-flips, between 1.3% (<code>fft</code>) and 2.2% (<code>aes128</code>), and EDDI brings all of them to 0.4% or less. With 1000 faults per application the differences between the applications are within the statistical uncertainty (about ±0.3 points). For inverted branches the picture is the same in all the applications; the SDCs left by RASM are all in <code>pid_control</code> (Section 5.3).</p>
+<h1 id="integration-into-aspis">6. Integration into ASPIS</h1>
+<p><code>aspis-integration/patches/</code> contains four commits for the main branch of ASPIS, produced with <code>git format-patch</code> against <code>b66a090</code>:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Patch</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0001</td>
+<td>fix(EDDI): null-safe consistency checks driven by the LLVM type of the values (bug 1)</td>
+</tr>
+<tr class="even">
+<td>0002</td>
+<td>fix(EDDI): re-synchronise the duplicated memory after calls to non-duplicated functions (bug 2)</td>
+</tr>
+<tr class="odd">
+<td>0003</td>
+<td>fix(RASM, RACFED): check the signature in the verification blocks of EDDI (bug 3; the same code is in RACFED)</td>
+</tr>
+<tr class="even">
+<td>0004</td>
+<td>test: add the four applications to <code>testing/tests/c/applications/</code> and to <code>tests.toml</code></td>
+</tr>
+</tbody>
+</table>
+<p>They apply with <code>git am</code> on <code>b66a090</code>. With them, <code>pytest test.py</code> runs our applications with the 55 combinations together with the existing tests, so that future changes of ASPIS are checked on them too. The patches have not been submitted yet.</p>
+<h1 id="limitations">7. Limitations</h1>
 <ul>
-<li><code>patches/aspis/</code>: the 19 commits, produced with <code>git format-patch</code> against <code>b66a090</code>. Commits 1-17 are the fixes of Section 4 (one per problem, each compiling on its own, the reproducer named in the message); commit 18 adds the 22 benchmarks to <code>testing/tests/c/applications/</code> and <code>testing/tests/c/language_features/</code> and their entries to <code>testing/config/tests.toml</code>; commit 19 removes inter-RASM from the blacklist of <code>cpp_class</code>, <code>cpp_heap</code> and <code>cpp_template</code>;</li>
-<li><code>patches/tda/</code>: the fix of TypeDeductionAnalysis, to be merged in its repository before the first ASPIS commit, which moves the submodule pointer;</li>
-<li><code>flc_tests.toml</code>: the entries of the tests, in the format of the harness;</li>
-<li><code>reproducers/</code>: the minimal programs and <code>run.py</code>, which builds them with several ASPIS checkouts (table of Section 4).</li>
+<li>The fault models cover the general purpose registers and the conditional jumps only. Faults in the floating-point registers (used by <code>fft</code> and <code>pid_control</code>), in memory, and multiple faults are not injected.</li>
+<li>The applications are small, and 1000 faults per application and configuration give intervals of a few tenths of a percent on the SDC rates.</li>
+<li>We compare the cost with the executed instructions, not with the run time: the applications run for a few milliseconds, too little for precise time measurements.</li>
+<li>The control-flow techniques work on the IR, so they cannot see the jumps created by the back-end, such as the one of the floating-point <code>select</code> in <code>pid_control</code> (Section 5.3); only data duplication catches them.</li>
 </ul>
-<p>With the series applied, <code>pytest test.py</code> in <code>testing/</code> runs the 22 new tests with the 55 combinations together with the existing ones. On the CI this adds 1210 builds to the existing 2640; a build of one of our benchmarks takes 0.2 s on average (median 0.1 s, at most 1.1 s), so the new tests add a few minutes to a run.</p>
-<h1 id="limitations-and-future-work">8. Limitations and future work</h1>
-<ul>
-<li>The fault model covers general purpose registers and control flow only: injecting into SSE registers and memory would complete the picture for the floating-point applications.</li>
-<li>inter-RASM still fails on <code>c_function_pointer</code> (with the techniques that do not duplicate the indirect call) and on the C++ tests with exceptions; the remaining blacklisted combinations are unchanged.</li>
-<li>When EDDI re-synchronises memory written by a non-hardened function through a pointer it cannot trace to an object of known size, it copies only the size of the deduced type: a buffer filled through a <code>char *</code> parameter is synchronised partially (a false detection is possible, never a crash).</li>
-<li>The control-flow techniques work on the IR, so they cannot see the conditional jumps created by the back-end, such as those that implement a <code>select</code> between floating-point values at <code>-O0</code>: these are the only inverted branches left undetected by RASM and RACFED (Section 6.2), and only data duplication catches them.</li>
-<li><code>sobel</code> received 300 faults per configuration and fault model instead of 1000, so its per-application results have wider intervals.</li>
-<li>Pointed aggregates are not compared, as on the main branch (where the comparison was emitted but had no effect); comparing scalar fields that are known to be initialised would increase the coverage of the checks.</li>
-<li>The compilation is not deterministic (Section 4.7).</li>
-</ul>
-<h1 id="declaration-on-the-use-of-large-language-models">9. Declaration on the use of large language models</h1>
+<h1 id="declaration-on-the-use-of-large-language-models">8. Declaration on the use of large language models</h1>
 <p>As allowed by the supervisors (“you can do whatever you want with AI, even the whole project, but you have to declare it”), this project was carried out with extensive use of an LLM-based coding agent, Claude (Anthropic), through Claude Code. The agent was used for:</p>
 <ul>
-<li>writing the benchmarks, the fault injector, the campaign and analysis scripts and the testing tools;</li>
-<li>running the experiments: building ASPIS and LLVM, the compatibility matrices, the fault-injection campaign;</li>
-<li>debugging ASPIS: isolating the failures, writing the reproducers, finding the root causes and writing the fixes and their commit messages;</li>
+<li>writing the applications, the fault injector and the campaign and analysis scripts;</li>
+<li>running the experiments: building LLVM and ASPIS, the test harness, the fault-injection campaign;</li>
+<li>debugging ASPIS: isolating the failures, writing the reproducers, finding the causes and writing the fixes;</li>
 <li>writing this report, its tables and figures.</li>
 </ul>
-<p>The students defined the goals, supervised the work, and are responsible for checking the results and the content of this report.</p>
+<p>The students defined the goals and the scope of the project, supervised the work, and are responsible for checking the results and the content of this report.</p>
 <h1 id="appendix-a.-reproducing-the-results">Appendix A. Reproducing the results</h1>
-<p>The repository has the following layout:</p>
 <table>
 <thead>
 <tr class="header">
@@ -1563,12 +758,12 @@
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>benchmarks/applications/</code>, <code>benchmarks/features/</code></td>
-<td>the 22 benchmarks</td>
+<td><code>benchmarks/</code></td>
+<td>the four applications</td>
 </tr>
 <tr class="even">
 <td><code>aspis-integration/</code></td>
-<td>patches, test entries, reproducers</td>
+<td>the patches for ASPIS, the test entries, the two reproducers</td>
 </tr>
 <tr class="odd">
 <td><code>fault_injection/injector/fi.c</code></td>
@@ -1579,16 +774,16 @@
 <td>the campaign</td>
 </tr>
 <tr class="odd">
-<td><code>fault_injection/analyze.py</code></td>
-<td>tables and figures</td>
+<td><code>fault_injection/analyze.py</code>, <code>export.py</code></td>
+<td>tables and figures; copy of the results into the repository</td>
 </tr>
 <tr class="even">
-<td><code>scripts/aspis_matrix.py</code>, <code>scripts/run_aspis_harness.py</code></td>
-<td>compatibility testing</td>
+<td><code>fault_injection/sdc_sites.py</code></td>
+<td>where the SDCs happened (Section 5.4)</td>
 </tr>
 <tr class="odd">
 <td><code>results/</code></td>
-<td>raw and aggregated results of all the experiments</td>
+<td>logs of the harness, results of the campaign</td>
 </tr>
 <tr class="even">
 <td><code>report/</code></td>
@@ -1596,32 +791,31 @@
 </tr>
 </tbody>
 </table>
-<p>Commands (paths to adapt; the scripts print their options with <code>--help</code>):</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. LLVM 21.1.8 and ASPIS with the patch series (see the README)</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. compatibility of the 22 benchmarks, on master and with the fixes</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> scripts/aspis_matrix.py <span class="at">--aspis</span> <span class="op">&lt;</span>ASPIS master<span class="op">&gt;</span> --llvm-bin <span class="op">&lt;</span>llvm<span class="op">&gt;</span>/bin <span class="dt">\</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">--tests</span> aspis-integration/flc_tests.toml <span class="dt">\</span></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">--tests-root</span> benchmarks-as-in-aspis <span class="at">--out</span> matrix-master</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> scripts/aspis_matrix.py <span class="at">--aspis</span> <span class="op">&lt;</span>ASPIS + fixes<span class="op">&gt;</span> --llvm-bin <span class="op">&lt;</span>llvm<span class="op">&gt;</span>/bin <span class="dt">\</span></span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">--tests</span> aspis-integration/flc_tests.toml <span class="at">--out</span> matrix-patched</span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. reproducers</span></span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> aspis-integration/reproducers/run.py <span class="at">--llvm-bin</span> <span class="op">&lt;</span>llvm<span class="op">&gt;</span>/bin <span class="dt">\</span></span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">--aspis</span> master=<span class="op">&lt;</span>ASPIS master<span class="op">&gt;</span> --aspis patched=<span class="op">&lt;</span>ASPIS + fixes<span class="op">&gt;</span></span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. fault injection (paths at the top of campaign.toml)</span></span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="fu">gcc</span> <span class="at">-O2</span> <span class="at">-o</span> fi fault_injection/injector/fi.c</span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> fault_injection/campaign.py fault_injection/campaign.toml <span class="at">--jobs</span> <span class="va">$(</span><span class="fu">nproc</span><span class="va">)</span></span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="co"># 5. tables, figures and this report</span></span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> fault_injection/analyze.py <span class="at">--campaign</span> <span class="op">&lt;</span>campaign output<span class="op">&gt;</span> --out report <span class="dt">\</span></span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">--matrix</span> master=matrix-master <span class="at">--matrix</span> patched=matrix-patched</span>
-<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> report/build.py</span></code></pre></div>
-<p><code>--tests-root</code> points to a directory with the layout of <code>testing/tests/</code> (<code>c/applications/</code>, <code>c/language_features/</code>), e.g. the <code>testing/tests</code> of an ASPIS checkout with commit 18 applied. The campaign of Section 5 takes about 2.5 hours on a 4-core virtual machine, most of it for <code>sobel</code> (the profile of its EDDI+RACFED build alone, 79 million single steps, takes 40 minutes); it can be interrupted and resumed, and <code>injections</code> in <code>campaign.toml</code> can be lowered for a quicker run.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. LLVM 21.1.8 and ASPIS with the patches</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-LO</span> https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.8/LLVM-21.1.8-Linux-X64.tar.xz</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">tar</span> xf LLVM-21.1.8-Linux-X64.tar.xz</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone <span class="at">--recursive</span> https://github.com/HEAPLab/ASPIS <span class="kw">&amp;&amp;</span> <span class="bu">cd</span> ASPIS <span class="kw">&amp;&amp;</span> <span class="fu">git</span> checkout b66a090</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> am <span class="op">&lt;</span>repo<span class="op">&gt;</span>/aspis-integration/patches/<span class="pp">*</span>.patch</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="fu">cmake</span> <span class="at">-B</span> build <span class="at">-G</span> Ninja <span class="at">-DLLVM_DIR</span><span class="op">=&lt;</span>llvm<span class="op">&gt;</span>/lib/cmake/llvm <span class="kw">&amp;&amp;</span> <span class="fu">cmake</span> <span class="at">--build</span> build</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. the official harness (llvm_bin in testing/config/llvm.toml)</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> testing <span class="kw">&amp;&amp;</span> <span class="ex">pytest</span> test.py <span class="at">-v</span> <span class="op">&gt;</span> harness.log</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. fault injection (paths at the top of campaign.toml)</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="fu">gcc</span> <span class="at">-O2</span> <span class="at">-o</span> fi <span class="op">&lt;</span>repo<span class="op">&gt;</span>/fault_injection/injector/fi.c</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="op">&lt;</span>repo<span class="op">&gt;</span>/fault_injection/campaign.py <span class="op">&lt;</span>repo<span class="op">&gt;</span>/fault_injection/campaign.toml</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="op">&lt;</span>repo<span class="op">&gt;</span>/fault_injection/export.py <span class="op">&lt;</span>campaign output<span class="op">&gt;</span> <span class="op">&lt;</span>repo<span class="op">&gt;</span>/results/fault_injection</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. tables, figures and this report</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="op">&lt;</span>repo<span class="op">&gt;</span>/fault_injection/analyze.py <span class="at">--campaign</span> <span class="op">&lt;</span>repo<span class="op">&gt;</span>/results/fault_injection <span class="dt">\</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">--before</span> <span class="op">&lt;</span>repo<span class="op">&gt;</span>/results/fault_injection/before_fix <span class="at">--out</span> <span class="op">&lt;</span>repo<span class="op">&gt;</span>/report <span class="dt">\</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">--harness</span> master=<span class="op">&lt;</span>repo<span class="op">&gt;</span>/results/compatibility/harness_master.log.gz <span class="dt">\</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">--harness</span> fixed=<span class="op">&lt;</span>repo<span class="op">&gt;</span>/results/compatibility/harness_fixed.log.gz</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="op">&lt;</span>repo<span class="op">&gt;</span>/report/build.py</span></code></pre></div>
+<p>The campaign takes about 25 minutes on a 4-core virtual machine. For the run without the RASM fix, build ASPIS with patches 0001 and 0002 only and run the campaign with the EDDI+RASM configuration alone.</p>
 <h1 id="references">References</h1>
 <ol type="1">
 <li>D. Baroffio, F. Reghenzani, W. Fornaciari. <em>Enhanced Compiler Technology for Software-based Hardware Fault Detection</em>. ACM Transactions on Design Automation of Electronic Systems 29(5), 2024. doi:10.1145/3660524.</li>
 <li>N. Oh, P. P. Shirvani, E. J. McCluskey. <em>Error detection by duplicated instructions in super-scalar processors</em>. IEEE Transactions on Reliability 51(1), 2002. doi:10.1109/24.994913.</li>
 <li>N. Oh, P. P. Shirvani, E. J. McCluskey. <em>Control-flow checking by software signatures</em>. IEEE Transactions on Reliability 51(1), 2002. doi:10.1109/24.994926.</li>
 <li>J. Vankeirsbilck, N. Penneman, H. Hallez, J. Boydens. <em>Random Additive Signature Monitoring for Control Flow Error Detection</em>. IEEE Transactions on Reliability 66(4), 2017. doi:10.1109/TR.2017.2754548.</li>
-<li>J. Vankeirsbilck, N. Penneman, H. Hallez, J. Boydens. <em>Random Additive Control Flow Error Detection</em>. SAFECOMP 2018, LNCS 11093. doi:10.1007/978-3-319-99130-6_15.</li>
 <li>ASPIS repository, https://github.com/HEAPLab/ASPIS (commit <code>b66a090</code>).</li>
 </ol>
 </body>

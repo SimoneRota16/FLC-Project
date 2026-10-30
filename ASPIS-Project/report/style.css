@@ -36,6 +36,7 @@ a { color: var(--accent); text-decoration: none; }
 code, pre {
   font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
   font-size: 0.86em;
+  font-variant-ligatures: none;
 }
 code { background: var(--code-bg); padding: 0.05em 0.25em; border-radius: 3px; }
 pre { background: var(--code-bg); padding: 0.7em 0.9em; border-radius: 4px; overflow-x: auto; line-height: 1.35; }

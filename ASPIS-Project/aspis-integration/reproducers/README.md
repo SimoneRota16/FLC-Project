@@ -1,13 +1,18 @@
 # Reproducers
 
-One minimal program per bug found in ASPIS (`b66a090`). `run.py` compiles
-each one with the options that expose the bug, using one or more ASPIS
-checkouts, and compares the result with the program compiled without ASPIS:
+Minimal programs for the two EDDI bugs fixed by the first two patches. On
+the main branch of ASPIS (`b66a090`) both crash when compiled with EDDI;
+with the patches they print the same output as the unhardened program.
+
+| Program | Bug | Fixed by |
+|---|---|---|
+| `null_pointer.c` | a consistency check dereferences a null pointer (`realloc(NULL, n)`) | `0001` |
+| `string_literal.c` | the re-synchronisation after `printf` writes into a string literal (`.rodata`) | `0002` |
 
 ```bash
-python3 run.py --llvm-bin <llvm>/bin --aspis master=<dir> --aspis patched=<dir>
+cd /tmp && <ASPIS>/aspis.sh --llvm-bin <llvm>/bin --eddi --no-cfc \
+    <this dir>/string_literal.c -o prog && ./prog
+# main branch: Segmentation fault; with the patches: hello
 ```
 
-The expected result on master is written in the comment at the top of each
-file; with the patch series every reproducer prints the same output as the
-unhardened program.
+`handlers.h` defines the two fault handlers that ASPIS calls on a detection.
