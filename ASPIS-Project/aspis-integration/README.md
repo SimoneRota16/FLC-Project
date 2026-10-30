@@ -80,7 +80,7 @@ Results with LLVM 21.1.8 (see the report for the details):
 
 | Suite | master `b66a090` | with the series |
 |---|---|---|
-| FLC benchmarks, 22 x 55 builds | MASTER_PASS | 1210 pass (100%) |
+| FLC benchmarks, 22 x 55 builds | 435 pass (36%); EDDI, sEDDI and FDSC: 0 / 660 | 1210 pass (100%) |
 | ASPIS tests, 2640 builds (187 blacklisted) | 2453 pass | 2453 pass |
 | ASPIS blacklisted combinations, inter-RASM/RACFED | 81 pass | 104 pass (cpp_class, cpp_heap, cpp_template fully pass with inter-RASM) |
 

@@ -1,0 +1,221 @@
+test,data,cfc,outcome,compile_s,detail
+c_function_pointer,--no-dup,--inter-rasm,run-hang,0.1,
+c_function_pointer,--no-dup,--racfed,pass,0.1,
+c_function_pointer,--eddi,--inter-rasm,run-hang,0.1,
+c_function_pointer,--eddi,--racfed,pass,0.1,
+c_function_pointer,--eddi --multiple-errbb,--inter-rasm,run-hang,0.1,
+c_function_pointer,--eddi --multiple-errbb,--racfed,pass,0.1,
+c_function_pointer,--eddi --coarse-grained,--inter-rasm,run-hang,0.1,
+c_function_pointer,--eddi --coarse-grained,--racfed,pass,0.1,
+c_function_pointer,--eddi --multiple-errbb --coarse-grained,--inter-rasm,run-hang,0.1,
+c_function_pointer,--eddi --multiple-errbb --coarse-grained,--racfed,pass,0.1,
+c_function_pointer,--reddi,--inter-rasm,run-hang,0.1,
+c_function_pointer,--reddi,--racfed,pass,0.1,
+c_function_pointer,--reddi --multiple-errbb,--inter-rasm,run-hang,0.1,
+c_function_pointer,--reddi --multiple-errbb,--racfed,pass,0.1,
+c_function_pointer,--reddi --coarse-grained,--inter-rasm,run-hang,0.1,
+c_function_pointer,--reddi --coarse-grained,--racfed,pass,0.1,
+c_function_pointer,--reddi --multiple-errbb --coarse-grained,--inter-rasm,run-hang,0.1,
+c_function_pointer,--reddi --multiple-errbb --coarse-grained,--racfed,pass,0.1,
+c_function_pointer,--seddi,--inter-rasm,run-hang,0.1,
+c_function_pointer,--seddi,--racfed,pass,0.1,
+c_function_pointer,--fdsc,--inter-rasm,run-hang,0.1,
+c_function_pointer,--fdsc,--racfed,pass,0.1,
+cpp_class,--no-dup,--inter-rasm,run-hang,0.2,
+cpp_class,--no-dup,--racfed,pass,0.2,
+cpp_class,--eddi,--inter-rasm,run-hang,0.3,
+cpp_class,--eddi,--racfed,pass,0.3,
+cpp_class,--eddi --multiple-errbb,--inter-rasm,run-hang,0.3,
+cpp_class,--eddi --multiple-errbb,--racfed,pass,0.3,
+cpp_class,--eddi --coarse-grained,--inter-rasm,run-hang,0.3,
+cpp_class,--eddi --coarse-grained,--racfed,pass,0.3,
+cpp_class,--eddi --multiple-errbb --coarse-grained,--inter-rasm,run-hang,0.3,
+cpp_class,--eddi --multiple-errbb --coarse-grained,--racfed,pass,0.3,
+cpp_class,--reddi,--inter-rasm,run-hang,0.3,
+cpp_class,--reddi,--racfed,pass,0.3,
+cpp_class,--reddi --multiple-errbb,--inter-rasm,run-hang,0.3,
+cpp_class,--reddi --multiple-errbb,--racfed,pass,0.3,
+cpp_class,--reddi --coarse-grained,--inter-rasm,run-hang,0.2,
+cpp_class,--reddi --coarse-grained,--racfed,pass,0.3,
+cpp_class,--reddi --multiple-errbb --coarse-grained,--inter-rasm,run-hang,0.3,
+cpp_class,--reddi --multiple-errbb --coarse-grained,--racfed,pass,0.3,
+cpp_class,--seddi,--inter-rasm,run-hang,0.3,
+cpp_class,--seddi,--racfed,pass,0.3,
+cpp_class,--fdsc,--inter-rasm,run-hang,0.3,
+cpp_class,--fdsc,--racfed,pass,0.3,
+cpp_exceptions,--no-dup,--inter-rasm,compile-error,0.3,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_exceptions,--no-dup,--racfed,mismatch,0.2,
+cpp_exceptions,--eddi,--inter-rasm,compile-error,0.3,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_exceptions,--eddi,--racfed,mismatch,0.3,
+cpp_exceptions,--eddi --multiple-errbb,--inter-rasm,compile-error,0.3,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_exceptions,--eddi --multiple-errbb,--racfed,mismatch,0.2,
+cpp_exceptions,--eddi --coarse-grained,--inter-rasm,compile-error,0.3,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_exceptions,--eddi --coarse-grained,--racfed,mismatch,0.3,
+cpp_exceptions,--eddi --multiple-errbb --coarse-grained,--inter-rasm,compile-error,0.3,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_exceptions,--eddi --multiple-errbb --coarse-grained,--racfed,mismatch,0.3,
+cpp_exceptions,--reddi,--inter-rasm,compile-error,0.3,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_exceptions,--reddi,--racfed,mismatch,0.3,
+cpp_exceptions,--reddi --multiple-errbb,--inter-rasm,compile-error,0.3,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_exceptions,--reddi --multiple-errbb,--racfed,mismatch,0.2,
+cpp_exceptions,--reddi --coarse-grained,--inter-rasm,compile-error,0.3,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_exceptions,--reddi --coarse-grained,--racfed,mismatch,0.2,
+cpp_exceptions,--reddi --multiple-errbb --coarse-grained,--inter-rasm,compile-error,0.3,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_exceptions,--reddi --multiple-errbb --coarse-grained,--racfed,mismatch,0.2,
+cpp_exceptions,--seddi,--inter-rasm,compile-error,0.3,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_exceptions,--seddi,--racfed,mismatch,0.3,
+cpp_exceptions,--fdsc,--inter-rasm,compile-error,0.3,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_exceptions,--fdsc,--racfed,mismatch,0.3,
+cpp_file_handler,--no-dup,--inter-rasm,pass,0.2,
+cpp_file_handler,--no-dup,--racfed,exit-code,0.2,1 vs 0
+cpp_file_handler,--eddi,--inter-rasm,pass,0.3,
+cpp_file_handler,--eddi,--racfed,exit-code,0.3,1 vs 0
+cpp_file_handler,--eddi --multiple-errbb,--inter-rasm,pass,0.3,
+cpp_file_handler,--eddi --multiple-errbb,--racfed,exit-code,0.3,1 vs 0
+cpp_file_handler,--eddi --coarse-grained,--inter-rasm,pass,0.3,
+cpp_file_handler,--eddi --coarse-grained,--racfed,exit-code,0.3,1 vs 0
+cpp_file_handler,--eddi --multiple-errbb --coarse-grained,--inter-rasm,pass,0.3,
+cpp_file_handler,--eddi --multiple-errbb --coarse-grained,--racfed,exit-code,0.3,1 vs 0
+cpp_file_handler,--reddi,--inter-rasm,pass,0.3,
+cpp_file_handler,--reddi,--racfed,exit-code,0.3,1 vs 0
+cpp_file_handler,--reddi --multiple-errbb,--inter-rasm,pass,0.2,
+cpp_file_handler,--reddi --multiple-errbb,--racfed,exit-code,0.2,1 vs 0
+cpp_file_handler,--reddi --coarse-grained,--inter-rasm,pass,0.2,
+cpp_file_handler,--reddi --coarse-grained,--racfed,exit-code,0.2,1 vs 0
+cpp_file_handler,--reddi --multiple-errbb --coarse-grained,--inter-rasm,pass,0.2,
+cpp_file_handler,--reddi --multiple-errbb --coarse-grained,--racfed,exit-code,0.2,1 vs 0
+cpp_file_handler,--seddi,--inter-rasm,pass,0.2,
+cpp_file_handler,--seddi,--racfed,exit-code,0.3,1 vs 0
+cpp_file_handler,--fdsc,--inter-rasm,pass,0.2,
+cpp_file_handler,--fdsc,--racfed,exit-code,0.2,1 vs 0
+cpp_heap,--no-dup,--inter-rasm,mismatch,0.2,
+cpp_heap,--no-dup,--racfed,pass,0.2,
+cpp_heap,--eddi,--inter-rasm,pass,0.3,
+cpp_heap,--eddi,--racfed,pass,0.2,
+cpp_heap,--eddi --multiple-errbb,--inter-rasm,pass,0.3,
+cpp_heap,--eddi --multiple-errbb,--racfed,pass,0.3,
+cpp_heap,--eddi --coarse-grained,--inter-rasm,pass,0.3,
+cpp_heap,--eddi --coarse-grained,--racfed,pass,0.2,
+cpp_heap,--eddi --multiple-errbb --coarse-grained,--inter-rasm,pass,0.2,
+cpp_heap,--eddi --multiple-errbb --coarse-grained,--racfed,pass,0.2,
+cpp_heap,--reddi,--inter-rasm,pass,0.2,
+cpp_heap,--reddi,--racfed,pass,0.2,
+cpp_heap,--reddi --multiple-errbb,--inter-rasm,pass,0.2,
+cpp_heap,--reddi --multiple-errbb,--racfed,pass,0.2,
+cpp_heap,--reddi --coarse-grained,--inter-rasm,pass,0.2,
+cpp_heap,--reddi --coarse-grained,--racfed,pass,0.2,
+cpp_heap,--reddi --multiple-errbb --coarse-grained,--inter-rasm,pass,0.3,
+cpp_heap,--reddi --multiple-errbb --coarse-grained,--racfed,pass,0.2,
+cpp_heap,--seddi,--inter-rasm,pass,0.3,
+cpp_heap,--seddi,--racfed,pass,0.3,
+cpp_heap,--fdsc,--inter-rasm,pass,0.3,
+cpp_heap,--fdsc,--racfed,pass,0.2,
+cpp_lambda_captures,--no-dup,--inter-rasm,mismatch,0.2,
+cpp_lambda_captures,--no-dup,--racfed,pass,0.2,
+cpp_lambda_captures,--eddi,--inter-rasm,mismatch,0.3,
+cpp_lambda_captures,--eddi,--racfed,pass,0.3,
+cpp_lambda_captures,--eddi --multiple-errbb,--inter-rasm,mismatch,0.3,
+cpp_lambda_captures,--eddi --multiple-errbb,--racfed,pass,0.3,
+cpp_lambda_captures,--eddi --coarse-grained,--inter-rasm,mismatch,0.3,
+cpp_lambda_captures,--eddi --coarse-grained,--racfed,pass,0.3,
+cpp_lambda_captures,--eddi --multiple-errbb --coarse-grained,--inter-rasm,mismatch,0.3,
+cpp_lambda_captures,--eddi --multiple-errbb --coarse-grained,--racfed,pass,0.3,
+cpp_lambda_captures,--reddi,--inter-rasm,mismatch,0.2,
+cpp_lambda_captures,--reddi,--racfed,pass,0.2,
+cpp_lambda_captures,--reddi --multiple-errbb,--inter-rasm,mismatch,0.2,
+cpp_lambda_captures,--reddi --multiple-errbb,--racfed,pass,0.2,
+cpp_lambda_captures,--reddi --coarse-grained,--inter-rasm,mismatch,0.2,
+cpp_lambda_captures,--reddi --coarse-grained,--racfed,pass,0.2,
+cpp_lambda_captures,--reddi --multiple-errbb --coarse-grained,--inter-rasm,mismatch,0.2,
+cpp_lambda_captures,--reddi --multiple-errbb --coarse-grained,--racfed,pass,0.2,
+cpp_lambda_captures,--seddi,--inter-rasm,mismatch,0.2,
+cpp_lambda_captures,--seddi,--racfed,pass,0.3,
+cpp_lambda_captures,--fdsc,--inter-rasm,mismatch,0.3,
+cpp_lambda_captures,--fdsc,--racfed,pass,0.3,
+cpp_stl_containers_advanced,--no-dup,--inter-rasm,compile-error,0.3,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_stl_containers_advanced,--no-dup,--racfed,exit-code,0.3,1 vs 0
+cpp_stl_containers_advanced,--eddi,--inter-rasm,compile-error,0.4,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_stl_containers_advanced,--eddi,--racfed,exit-code,0.4,1 vs 0
+cpp_stl_containers_advanced,--eddi --multiple-errbb,--inter-rasm,compile-error,0.4,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_stl_containers_advanced,--eddi --multiple-errbb,--racfed,exit-code,0.4,1 vs 0
+cpp_stl_containers_advanced,--eddi --coarse-grained,--inter-rasm,compile-error,0.4,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_stl_containers_advanced,--eddi --coarse-grained,--racfed,exit-code,0.4,1 vs 0
+cpp_stl_containers_advanced,--eddi --multiple-errbb --coarse-grained,--inter-rasm,compile-error,0.4,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_stl_containers_advanced,--eddi --multiple-errbb --coarse-grained,--racfed,exit-code,0.4,1 vs 0
+cpp_stl_containers_advanced,--reddi,--inter-rasm,compile-error,0.4,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_stl_containers_advanced,--reddi,--racfed,exit-code,0.4,1 vs 0
+cpp_stl_containers_advanced,--reddi --multiple-errbb,--inter-rasm,compile-error,0.4,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_stl_containers_advanced,--reddi --multiple-errbb,--racfed,exit-code,0.4,1 vs 0
+cpp_stl_containers_advanced,--reddi --coarse-grained,--inter-rasm,compile-error,0.4,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_stl_containers_advanced,--reddi --coarse-grained,--racfed,exit-code,0.4,1 vs 0
+cpp_stl_containers_advanced,--reddi --multiple-errbb --coarse-grained,--inter-rasm,compile-error,0.4,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_stl_containers_advanced,--reddi --multiple-errbb --coarse-grained,--racfed,exit-code,0.4,1 vs 0
+cpp_stl_containers_advanced,--seddi,--inter-rasm,compile-error,0.4,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_stl_containers_advanced,--seddi,--racfed,exit-code,0.4,1 vs 0
+cpp_stl_containers_advanced,--fdsc,--inter-rasm,compile-error,0.4,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_stl_containers_advanced,--fdsc,--racfed,exit-code,0.4,1 vs 0
+cpp_template,--no-dup,--inter-rasm,mismatch,0.2,
+cpp_template,--no-dup,--racfed,pass,0.2,
+cpp_template,--eddi,--inter-rasm,pass,0.3,
+cpp_template,--eddi,--racfed,pass,0.3,
+cpp_template,--eddi --multiple-errbb,--inter-rasm,pass,0.2,
+cpp_template,--eddi --multiple-errbb,--racfed,pass,0.3,
+cpp_template,--eddi --coarse-grained,--inter-rasm,pass,0.2,
+cpp_template,--eddi --coarse-grained,--racfed,pass,0.2,
+cpp_template,--eddi --multiple-errbb --coarse-grained,--inter-rasm,pass,0.2,
+cpp_template,--eddi --multiple-errbb --coarse-grained,--racfed,pass,0.2,
+cpp_template,--reddi,--inter-rasm,mismatch,0.2,
+cpp_template,--reddi,--racfed,pass,0.2,
+cpp_template,--reddi --multiple-errbb,--inter-rasm,mismatch,0.2,
+cpp_template,--reddi --multiple-errbb,--racfed,pass,0.2,
+cpp_template,--reddi --coarse-grained,--inter-rasm,mismatch,0.2,
+cpp_template,--reddi --coarse-grained,--racfed,pass,0.2,
+cpp_template,--reddi --multiple-errbb --coarse-grained,--inter-rasm,mismatch,0.2,
+cpp_template,--reddi --multiple-errbb --coarse-grained,--racfed,pass,0.2,
+cpp_template,--seddi,--inter-rasm,pass,0.3,
+cpp_template,--seddi,--racfed,pass,0.3,
+cpp_template,--fdsc,--inter-rasm,mismatch,0.3,
+cpp_template,--fdsc,--racfed,pass,0.3,
+cpp_threads,--no-dup,--inter-rasm,compile-error,0.3,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_threads,--no-dup,--racfed,mismatch,0.3,
+cpp_threads,--eddi,--inter-rasm,compile-error,0.7,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_threads,--eddi,--racfed,mismatch,0.7,
+cpp_threads,--eddi --multiple-errbb,--inter-rasm,compile-error,0.7,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_threads,--eddi --multiple-errbb,--racfed,mismatch,0.7,
+cpp_threads,--eddi --coarse-grained,--inter-rasm,compile-error,0.7,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_threads,--eddi --coarse-grained,--racfed,mismatch,0.7,
+cpp_threads,--eddi --multiple-errbb --coarse-grained,--inter-rasm,compile-error,0.7,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_threads,--eddi --multiple-errbb --coarse-grained,--racfed,mismatch,0.7,
+cpp_threads,--reddi,--inter-rasm,compile-error,0.5,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_threads,--reddi,--racfed,mismatch,0.5,
+cpp_threads,--reddi --multiple-errbb,--inter-rasm,compile-error,0.5,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_threads,--reddi --multiple-errbb,--racfed,mismatch,0.5,
+cpp_threads,--reddi --coarse-grained,--inter-rasm,compile-error,0.5,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_threads,--reddi --coarse-grained,--racfed,mismatch,0.5,
+cpp_threads,--reddi --multiple-errbb --coarse-grained,--inter-rasm,compile-error,0.5,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_threads,--reddi --multiple-errbb --coarse-grained,--racfed,mismatch,0.5,
+cpp_threads,--seddi,--inter-rasm,compile-error,0.7,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_threads,--seddi,--racfed,mismatch,0.7,
+cpp_threads,--fdsc,--inter-rasm,compile-error,0.7,ERROR: Command FAILED: /home/user/work/toolchain/LLVM-21.1.8-Linux-X64/bin/opt -load-pass-plugin=/home/user/work/ASPIS-master/build/passes/libINTER_RASM.so --passes=rasm-verify /home/user/work/results
+cpp_threads,--fdsc,--racfed,mismatch,0.7,
+cpp_complex,--no-dup,--inter-rasm,skipped,0,
+cpp_complex,--no-dup,--racfed,skipped,0,
+cpp_complex,--eddi,--inter-rasm,skipped,0,
+cpp_complex,--eddi,--racfed,skipped,0,
+cpp_complex,--eddi --multiple-errbb,--inter-rasm,skipped,0,
+cpp_complex,--eddi --multiple-errbb,--racfed,skipped,0,
+cpp_complex,--eddi --coarse-grained,--inter-rasm,skipped,0,
+cpp_complex,--eddi --coarse-grained,--racfed,skipped,0,
+cpp_complex,--eddi --multiple-errbb --coarse-grained,--inter-rasm,skipped,0,
+cpp_complex,--eddi --multiple-errbb --coarse-grained,--racfed,skipped,0,
+cpp_complex,--reddi,--inter-rasm,skipped,0,
+cpp_complex,--reddi,--racfed,skipped,0,
+cpp_complex,--reddi --multiple-errbb,--inter-rasm,skipped,0,
+cpp_complex,--reddi --multiple-errbb,--racfed,skipped,0,
+cpp_complex,--reddi --coarse-grained,--inter-rasm,skipped,0,
+cpp_complex,--reddi --coarse-grained,--racfed,skipped,0,
+cpp_complex,--reddi --multiple-errbb --coarse-grained,--inter-rasm,skipped,0,
+cpp_complex,--reddi --multiple-errbb --coarse-grained,--racfed,skipped,0,
+cpp_complex,--seddi,--inter-rasm,skipped,0,
+cpp_complex,--seddi,--racfed,skipped,0,
+cpp_complex,--fdsc,--inter-rasm,skipped,0,
+cpp_complex,--fdsc,--racfed,skipped,0,

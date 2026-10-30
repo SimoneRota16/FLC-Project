@@ -28,21 +28,49 @@ LABELS = {"masked": "Masked", "detected_data": "Detected (data check)",
           "detected_cfc": "Detected (signature check)", "crash": "Crash",
           "hang": "Hang", "sdc": "SDC"}
 
-# reference palette of the dataviz method (light mode); outcomes are status:
-# masked is neutral, detection is good, crash/hang/SDC are serious/warning/critical
-SURFACE, INK, INK2, MUTED, GRID, AXIS = "#fcfcfb", "#0b0b0b", "#52514e", "#898781", "#e1e0d9", "#c3c2b7"
-COLORS = {"masked": "#c3c2b7", "detected_data": "#0ca30c", "detected_cfc": "#0ca30c",
-          "crash": "#ec835a", "hang": "#fab219", "sdc": "#d03b3b"}
+# Reference palette of the dataviz method. The outcomes are status values:
+# masked is neutral, detection is good, crash/hang/SDC are serious/warning/
+# critical. Every figure is drawn twice, for light and dark pages; the dark
+# version uses the dark steps of the same palette, not an inversion.
+THEMES = {
+    "light": dict(SURFACE="#fcfcfb", INK="#0b0b0b", INK2="#52514e", MUTED="#898781", GRID="#e1e0d9",
+                  AXIS="#c3c2b7", MASKED="#c3c2b7", HATCH_INK="#006300", SERIES=["#2a78d6", "#eb6834"],
+                  SEQ=["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"]),
+    "dark": dict(SURFACE="#1a1a19", INK="#f0efec", INK2="#c3c2b7", MUTED="#898781", GRID="#2c2c2a",
+                 AXIS="#383835", MASKED="#6b6a65", HATCH_INK="#004d00", SERIES=["#3987e5", "#d95926"],
+                 SEQ=["#104281", "#184f95", "#1c5cab", "#256abf", "#3987e5", "#6da7ec", "#9ec5f4"]),
+}
 HATCH = {"detected_cfc": "////"}
-SERIES = ["#2a78d6", "#eb6834"]  # categorical slots 1-2
-SEQ = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"]
+SUFFIX = ""
 
-plt.rcParams.update({
-    "font.family": "DejaVu Sans", "font.size": 9, "axes.edgecolor": AXIS, "axes.labelcolor": INK2,
-    "xtick.color": INK2, "ytick.color": INK2, "text.color": INK, "axes.facecolor": SURFACE,
-    "figure.facecolor": SURFACE, "savefig.facecolor": SURFACE, "axes.linewidth": 0.8,
-    "hatch.color": "#006300", "hatch.linewidth": 0.8,
-})
+
+def set_theme(name):
+    """Sets the module-level colors and the matplotlib defaults for a theme."""
+    global SURFACE, INK, INK2, MUTED, GRID, AXIS, COLORS, SERIES, SEQ, SUFFIX
+    t = THEMES[name]
+    SURFACE, INK, INK2, MUTED, GRID, AXIS = t["SURFACE"], t["INK"], t["INK2"], t["MUTED"], t["GRID"], t["AXIS"]
+    SERIES, SEQ = t["SERIES"], t["SEQ"]
+    COLORS = {"masked": t["MASKED"], "detected_data": "#0ca30c", "detected_cfc": "#0ca30c",
+              "crash": "#ec835a", "hang": "#fab219", "sdc": "#d03b3b"}
+    SUFFIX = "" if name == "light" else "_" + name
+    plt.rcParams.update({
+        "font.family": ["Inter", "DejaVu Sans"], "font.size": 9, "axes.edgecolor": AXIS,
+        "axes.labelcolor": INK2, "svg.fonttype": "none", "xtick.color": INK2, "ytick.color": INK2,
+        "text.color": INK, "axes.facecolor": SURFACE, "figure.facecolor": SURFACE,
+        "savefig.facecolor": SURFACE, "axes.linewidth": 0.8, "hatch.color": t["HATCH_INK"],
+        "hatch.linewidth": 0.8, "legend.labelcolor": INK2,
+    })
+
+
+set_theme("light")
+
+
+def ink_on(fill):
+    """Near-black or white text, whichever reads better on the fill color."""
+    rgb = [int(fill[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    lin = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in rgb]
+    lum = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+    return "#0b0b0b" if lum > 0.25 else "#ffffff"
 
 
 def read_csv(path):
@@ -75,7 +103,7 @@ def style(ax, grid_axis="x"):
 def save(fig, out, name):
     os.makedirs(os.path.join(out, "figures"), exist_ok=True)
     for ext in ("svg", "png"):
-        fig.savefig(os.path.join(out, "figures", name + "." + ext), dpi=200, bbox_inches="tight")
+        fig.savefig(os.path.join(out, "figures", name + SUFFIX + "." + ext), dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -130,8 +158,8 @@ def fig_outcomes(agg, benches, out):
                fontsize=8.5)
     fig.text(0.995, 0.955, "value at the right of each bar: SDC rate", ha="right", fontsize=7.5,
              color=MUTED)
-    fig.suptitle("Outcome of the injected faults, %d benchmarks x %s injections per configuration"
-                 % (len(benches), "{:,}".format(max(agg[(CONFIGS[0], MODELS[0][0])]["n"], 0))),
+    fig.suptitle("Outcome of the injected faults: %d applications, %s faults per configuration and model"
+                 % (len(benches), "{:,}".format(agg[(CONFIGS[0], MODELS[0][0])]["n"])),
                  x=0.01, ha="left", fontsize=11, color=INK)
     fig.tight_layout(rect=(0, 0.02, 1, 0.95))
     save(fig, out, "fi_outcomes")
@@ -208,16 +236,15 @@ def fig_overhead(ovh, benches, out):
 
 
 def table_overhead(ovh, metrics, benches, out):
-    lines = ["| configuration | code size | executed instructions | run time | consistency checks |",
-             "|---|---:|---:|---:|---:|"]
+    lines = ["| configuration | code size | executed instructions | consistency checks |",
+             "|---|---:|---:|---:|"]
     comps = defaultdict(int)
     for r in metrics:
         comps[r["config"]] += int(r["comparisons"])
     for conf in CONFIGS:
         sz = gmean([ovh[conf][b][0] for b in benches])
-        tm = gmean([ovh[conf][b][1] for b in benches])
         dy = gmean([ovh[conf][b][2] for b in benches])
-        lines.append("| %s | %.2fx | %.2fx | %.2fx | %d |" % (conf, sz, dy, tm, comps[conf]))
+        lines.append("| %s | %.2fx | %.2fx | %d |" % (conf, sz, dy, comps[conf]))
     write(out, "overhead", "\n".join(lines) + "\n")
     lines = ["| benchmark | baseline .text (B) | baseline instructions | " +
              " | ".join(c for c in CONFIGS[1:]) + " |", "|---|---:|---:" + "|---:" * (len(CONFIGS) - 1) + "|"]
@@ -325,7 +352,7 @@ def compat(matrices, out):
                 level = min(len(SEQ) - 1, int(ok / ntests * (len(SEQ) - 1) + 0.5))
                 ax.add_patch(plt.Rectangle((j, len(datas) - 1 - i), 0.94, 0.9, color=SEQ[level]))
                 ax.text(j + 0.47, len(datas) - 1 - i + 0.45, str(ok), ha="center", va="center", fontsize=7.5,
-                        color="#ffffff" if level >= 4 else INK)
+                        color=ink_on(SEQ[level]))
         ax.set_xlim(0, len(cfcs))
         ax.set_ylim(0, len(datas))
         ax.set_xticks([j + 0.47 for j in range(len(cfcs))])
@@ -338,7 +365,8 @@ def compat(matrices, out):
             side.set_visible(False)
         ax.tick_params(length=0)
     fig.text(0.01, -0.02, "Each cell: number of the %d benchmarks whose hardened build prints the same output "
-             "as the unhardened one (darker = more)." % ntests, fontsize=8, color=MUTED)
+             "as the unhardened one (%s = more)." % (ntests, "darker" if SUFFIX == "" else "brighter"),
+             fontsize=8, color=MUTED)
     fig.tight_layout()
     save(fig, out, "compat")
 
@@ -349,25 +377,29 @@ def main():
     ap.add_argument("--matrix", action="append", default=[], help="name=<dir with matrix.csv>")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
-    if args.campaign:
-        outcomes = read_csv(os.path.join(args.campaign, "outcomes.csv"))
-        metrics = read_csv(os.path.join(args.campaign, "metrics.csv"))
-        benches = []
-        for r in metrics:
-            if r["benchmark"] not in benches:
-                benches.append(r["benchmark"])
-        agg = aggregate(outcomes)
-        fig_outcomes(agg, benches, args.out)
-        table_outcomes(agg, args.out)
-        for model, _ in MODELS:
-            table_sdc_per_benchmark(outcomes, benches, args.out, model)
-        ovh = overheads(metrics, benches)
-        fig_overhead(ovh, benches, args.out)
-        table_overhead(ovh, metrics, benches, args.out)
-        table_mwtf(agg, ovh, benches, args.out)
-        fig_tradeoff(agg, ovh, benches, args.out)
-    if args.matrix:
-        compat([m.split("=", 1) for m in args.matrix], args.out)
+    for theme in ("light", "dark"):
+        set_theme(theme)
+        tables = theme == "light"  # the tables do not depend on the theme
+        if args.campaign:
+            outcomes = read_csv(os.path.join(args.campaign, "outcomes.csv"))
+            metrics = read_csv(os.path.join(args.campaign, "metrics.csv"))
+            benches = []
+            for r in metrics:
+                if r["benchmark"] not in benches:
+                    benches.append(r["benchmark"])
+            agg = aggregate(outcomes)
+            ovh = overheads(metrics, benches)
+            fig_outcomes(agg, benches, args.out)
+            fig_overhead(ovh, benches, args.out)
+            fig_tradeoff(agg, ovh, benches, args.out)
+            if tables:
+                table_outcomes(agg, args.out)
+                for model, _ in MODELS:
+                    table_sdc_per_benchmark(outcomes, benches, args.out, model)
+                table_overhead(ovh, metrics, benches, args.out)
+                table_mwtf(agg, ovh, benches, args.out)
+        if args.matrix:
+            compat([m.split("=", 1) for m in args.matrix], args.out)
 
 
 if __name__ == "__main__":

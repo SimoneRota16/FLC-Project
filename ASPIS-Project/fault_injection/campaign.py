@@ -266,9 +266,11 @@ def main():
             prof, golden = profiles[(b["name"], c["name"])]
             _, tmed = bench_time(binary)
             timeout_ms = max(int(camp.get("timeout_min_ms", 300)), int(tmed * camp.get("timeout_factor", 20) / 1000))
+            # a benchmark can override the number of injections
+            n_bench = int(b.get("injections", n_inj))
             for m in models:
-                for k in range(0, n_inj, chunk):
-                    cnt = min(chunk, n_inj - k)
+                for k in range(0, n_bench, chunk):
+                    cnt = min(chunk, n_bench - k)
                     seed = seed_of(str(camp.get("seed", 1)), b["name"], c["name"], m, str(k))
                     csv_path = os.path.join(paths["raw"], "%s__%s__%s__%05d.csv" % (b["name"], c["name"], m, k))
                     tasks.append((binary, prof, golden, m, seed, cnt, timeout_ms, csv_path))

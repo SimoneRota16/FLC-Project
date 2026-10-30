@@ -93,3 +93,4 @@ source = "benchmarks/applications/pid_control.c"
 [[benchmark]]
 name = "sobel"
 source = "benchmarks/applications/sobel.c"
+injections = 300   # its hot loops make every experiment ~10x slower (see report)
