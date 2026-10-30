@@ -69,6 +69,10 @@ name = "bst_dict"
 source = "benchmarks/applications/bst_dict.c"
 
 [[benchmark]]
+name = "expr_vm"
+source = "benchmarks/applications/expr_vm.c"
+
+[[benchmark]]
 name = "fft"
 source = "benchmarks/applications/fft.c"
 flags = "-lm"

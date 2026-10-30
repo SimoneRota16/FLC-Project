@@ -1,0 +1,52 @@
+From f005c9c06c22ce6646ee8cc3e7b4259eee495605 Mon Sep 17 00:00:00 2001
+From: Simone Rota <simone.rota16@gmail.com>
+Date: Thu, 29 Oct 2026 23:44:56 +0000
+Subject: [PATCH 05/18] fix(EDDI): the duplicate of a global refers to the
+ duplicated globals
+
+The initializer of the duplicate of a global was the same as the original
+one, so `int *p = &x;` produced `p_dup = &x` instead of `&x_dup`: the two copies
+of the program shared x, only x was updated through the pointers, and the
+following checks on x/x_dup reported a false data corruption.
+---
+ passes/EDDI.cpp | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/passes/EDDI.cpp b/passes/EDDI.cpp
+index 6f5bebd..5f3c910 100755
+--- a/passes/EDDI.cpp
++++ b/passes/EDDI.cpp
+@@ -1227,6 +1227,8 @@ void EDDI::duplicateGlobals(Module &Md) {
+   Value *RuntimeSig;
+   Value *RetSig;
+   std::list<GlobalVariable *> GVars;
++  ValueToValueMapTy DuplicatedGlobalsMap;
++  std::vector<GlobalVariable *> CreatedCopies;
+   for (auto *V : toHardenVariables) {
+     if(isa<GlobalVariable>(V)) {
+       GVars.push_back(cast<GlobalVariable>(V));
+@@ -1305,6 +1307,21 @@ void EDDI::duplicateGlobals(Module &Md) {
+       // of other duplicated instructions
+       DuplicatedInstructionMap.insert(std::pair<Value *, Value *>(GV, GVCopy));
+       DuplicatedInstructionMap.insert(std::pair<Value *, Value *>(GVCopy, GV));
++      DuplicatedGlobalsMap[GV] = GVCopy;
++      CreatedCopies.push_back(GVCopy);
++    }
++  }
++
++  // The initializer of a global may refer to other duplicated globals (e.g.
++  // int *p = &x): the initializer of its duplicate must refer to their
++  // duplicates, otherwise the original and the duplicated copy of the program
++  // would share the pointed object, and only the original one would be
++  // updated through the pointer.
++  // (MapValue also caches the mapped constants in DuplicatedGlobalsMap, so the
++  // copies are visited through a separate list)
++  for (GlobalVariable *Copy : CreatedCopies) {
++    if (Copy->hasInitializer()) {
++      Copy->setInitializer(MapValue(Copy->getInitializer(), DuplicatedGlobalsMap));
+     }
+   }
+ }
+-- 
+2.43.0
+

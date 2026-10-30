@@ -1,0 +1,209 @@
+From f8ec381f0242d32753b0a6cd5be350e1b8c51b18 Mon Sep 17 00:00:00 2001
+From: Simone Rota <simone.rota16@gmail.com>
+Date: Thu, 29 Oct 2026 23:42:42 +0000
+Subject: [PATCH 02/18] fix(EDDI): null-safe consistency checks driven by the
+ LLVM type of the values
+
+The consistency checks on pointers compare the pointed values, but
+- a pointer can be null (e.g. the end of a linked list, or the argument of
+  realloc): the check dereferenced it and the hardened program crashed. The
+  loads now read from a zero-initialized constant when the pointer is null;
+  if only one of the two copies is null the loaded values still differ;
+- compareValues chose the comparison from the deduced (source-level) type, so a
+  small struct passed as an i64 was handled with extractvalue on an integer and
+  opt crashed; the comparison now depends on the LLVM type of the values;
+- aggregates were "compared" by emitting extractvalue instructions that were
+  never used (the elements are not in the deduced types), and the whole
+  aggregate was loaded: only scalar values are compared now, since aggregates
+  may contain uninitialized elements and padding.
+---
+ passes/ASPIS.h  |   2 +
+ passes/EDDI.cpp | 132 +++++++++++++++++++++++-------------------------
+ 2 files changed, 66 insertions(+), 68 deletions(-)
+
+diff --git a/passes/ASPIS.h b/passes/ASPIS.h
+index 1d250c5..75e0ec8 100644
+--- a/passes/ASPIS.h
++++ b/passes/ASPIS.h
+@@ -55,6 +55,7 @@ class EDDI : public PassInfoMixin<EDDI> {
+         bool MultipleErrBBEnabled;
+         bool CoarseGrainedDuplicationEnabled;
+         int comparisonCounter = 0;
++        std::map<Type *, GlobalVariable *> NullGuards;
+ 
+         void preprocess(Module &Md);
+         void fixDuplicatedConstructors(Module &Md);
+@@ -64,6 +65,7 @@ class EDDI : public PassInfoMixin<EDDI> {
+         void duplicateOperands (Instruction &I, BasicBlock &ErrBB);
+         Value* getPtrFinalValue(Value &V);
+         bool ptrNotDereferenceable(Value &V);
++        Value *getNullSafePointer(Value *Ptr, Type *Ty, IRBuilder<> &B);
+         void comparePtrs(std::vector<Value *> *CmpInstructions, Value &V1, Value &V2, IRBuilder<> &B);
+         void addConsistencyChecks(Instruction &I, BasicBlock &ErrBB);
+         void fixFuncValsPassedByReference(Instruction &I, IRBuilder<> &B);
+diff --git a/passes/EDDI.cpp b/passes/EDDI.cpp
+index c0e861a..b5495e6 100755
+--- a/passes/EDDI.cpp
++++ b/passes/EDDI.cpp
+@@ -756,6 +756,20 @@ bool EDDI::ptrNotDereferenceable(Value &V) {
+   return false;
+ }
+ 
++// Returns a pointer from which a value of type Ty can be loaded safely: Ptr
++// itself or, if Ptr is null (e.g. the end of a linked list or the argument of
++// realloc), a zero-initialized constant. If only one of the two copies of a
++// pointer is null the loaded values differ, so the mismatch is still detected.
++Value *EDDI::getNullSafePointer(Value *Ptr, Type *Ty, IRBuilder<> &B) {
++  GlobalVariable *&Guard = NullGuards[Ty];
++  if (Guard == nullptr) {
++    Guard = new GlobalVariable(*B.GetInsertBlock()->getModule(), Ty, true,
++                               GlobalValue::PrivateLinkage,
++                               Constant::getNullValue(Ty), "aspis_null_guard");
++  }
++  return B.CreateSelect(B.CreateIsNull(Ptr), Guard, Ptr);
++}
++
+ // Follows the pointers V1 and V2 using getPtrFinalValue() and adds a compare
+ // instruction using the IRBuilder B.
+ void EDDI::comparePtrs(std::vector<Value *> *CmpInstructions, Value &V1, Value &V2, IRBuilder<> &B) {
+@@ -812,32 +826,40 @@ void EDDI::comparePtrs(std::vector<Value *> *CmpInstructions, Value &V1, Value &
+     return;
+   }
+     
+-  assert(((V1Ty->isPointerTT() && V1.getType()->isPointerTy()) || (V2Ty->isPointerTT() && V2.getType()->isPointerTy())) && "No pointers found");
+-
+-  while(V1Ty->isPointerTT()) {
+-    V1Ty = V1Ty->getPointedType();
+-
+-    if(V1Ty == nullptr) {
+-      errs() << "Warning1: Can't find final value for pointer " << V1 << "\n";
+-      return;
+-    }
+-
+-    if(F1->getType()->isPointerTy()) {
+-      F1 = B.CreateLoad(V1Ty->getLLVMType(), F1);
+-    }
++  if(!V1Ty->isPointerTT() || !V2Ty->isPointerTT() || !V1.getType()->isPointerTy() || !V2.getType()->isPointerTy()) {
++    errs() << "Warning: " << V1 << " or " << V2 << " is not a pointer\n";
++    return;
+   }
+ 
+-  while(V2Ty->isPointerTT()) {
+-    V2Ty = V2Ty->getPointedType();
+-
+-    if(V2Ty == nullptr) {
+-      errs() << "Warning2: Can't find final value for pointer " << V2 << "\n";
+-      return;
++  // Follows the chain of pointers starting from V and returns the final
++  // (non-pointer) value, or nullptr if it cannot be loaded.
++  auto loadFinalValue = [&](Value *V, TransparentType *&VTy) -> Value * {
++    Value *F = V;
++    while(VTy->isPointerTT()) {
++      VTy = VTy->getPointedType();
++      if(VTy == nullptr || VTy->getLLVMType() == nullptr || !F->getType()->isPointerTy()) {
++        return nullptr;
++      }
++      Type *LoadTy = VTy->getLLVMType();
++      // Only scalar values are compared: an aggregate may contain
++      // uninitialized elements or padding, which differ between the copies.
++      if(!LoadTy->isPointerTy() && !LoadTy->isIntegerTy() && !LoadTy->isFloatingPointTy()) {
++        return nullptr;
++      }
++      F = B.CreateLoad(LoadTy, getNullSafePointer(F, LoadTy, B));
+     }
++    return F;
++  };
+ 
+-    if(F2->getType()->isPointerTy()) {
+-      F2 = B.CreateLoad(V2Ty->getLLVMType(), F2);
+-    }
++  F1 = loadFinalValue(F1, V1Ty);
++  if(F1 == nullptr) {
++    errs() << "Warning1: Can't find final value for pointer " << V1 << "\n";
++    return;
++  }
++  F2 = loadFinalValue(F2, V2Ty);
++  if(F2 == nullptr) {
++    errs() << "Warning2: Can't find final value for pointer " << V2 << "\n";
++    return;
+   }
+ 
+   if(F1->getType() != F2->getType()) {
+@@ -1028,54 +1050,28 @@ void EDDI::compareValues(std::vector<Value *> *CmpInstructions, Value &V1, Value
+     return;
+   }
+ 
+-  TransparentType *V1Ty = deducedTypes.transparentTypes.find(&V1)->second.begin()->get();
+-  TransparentType *V2Ty = deducedTypes.transparentTypes.find(&V2)->second.begin()->get();
+-
+-  if(V1Ty->isPointerTT() || V2Ty->isPointerTT()) {
+-    comparePtrs(CmpInstructions, V1, V2, B);
+-  } else if(V1Ty->isPrimitiveTT()) {
+-    if(V1Ty->isIntegerTyOrPtrTo()) {
+-      auto Cmp = B.CreateCmp(CmpInst::ICMP_EQ, &V1, &V2);
+-      CmpInstructions->push_back(Cmp);
+-      DuplicatedInstructionMap.insert(std::pair<Value *, Value *>(Cmp, Cmp));
+-      comparisonCounter++;
+-    } else if(V1Ty->isFloatingPointTyOrPtrTo()) {
+-      auto Cmp = B.CreateCmp(CmpInst::FCMP_UEQ, &V1, &V2);
+-      CmpInstructions->push_back(Cmp);
+-      DuplicatedInstructionMap.insert(std::pair<Value *, Value *>(Cmp, Cmp));
+-      comparisonCounter++;
+-    } else {
+-      errs() << "Warning: Unsupported primitive type for comparison: " << V1Ty->toString() << "\n";
+-      return;
+-    }
+-  } else if(V1Ty->isStructTT()) {
+-    for (unsigned i = 0; i < V1Ty->getLLVMType()->getStructNumElements(); i++) {
+-      Value *OriginalElem = B.CreateExtractValue(&V1, i);
+-      Value *CopyElem = B.CreateExtractValue(&V2, i);
+-      DuplicatedInstructionMap.insert(
+-          std::pair<Value *, Value *>(OriginalElem, CopyElem));
+-      DuplicatedInstructionMap.insert(
+-          std::pair<Value *, Value *>(CopyElem, OriginalElem));
+-
+-      compareValues(CmpInstructions, *OriginalElem, *CopyElem, B);
+-    }
+-  } else if(V1Ty->isArrayTT()) {
+-    int arraysize = V1Ty->getLLVMType()->getArrayNumElements();
+-
+-    for (int i = 0; i < arraysize; i++) {
+-      Value *OriginalElem = B.CreateExtractValue(&V1, i);
+-      Value *CopyElem = B.CreateExtractValue(&V2, i);
+-      DuplicatedInstructionMap.insert(
+-          std::pair<Value *, Value *>(OriginalElem, CopyElem));
+-      DuplicatedInstructionMap.insert(
+-          std::pair<Value *, Value *>(CopyElem, OriginalElem));
+-
+-      compareValues(CmpInstructions,*OriginalElem, *CopyElem, B);
+-    }
+-  } else {
+-    errs() << "Warning: Unsupported type for comparison: " << V1Ty->toString() << "\n";
++  // The kind of comparison depends on the LLVM type of the values: the
++  // deduced type may describe the source-level type of a value that the ABI
++  // lowered to a different one (e.g. a small struct passed as an i64).
++  Type *Ty = V1.getType();
++  if(Ty != V2.getType()) {
+     return;
+   }
++  if(Ty->isPointerTy()) {
++    comparePtrs(CmpInstructions, V1, V2, B);
++  } else if(Ty->isIntegerTy()) {
++    auto Cmp = B.CreateCmp(CmpInst::ICMP_EQ, &V1, &V2);
++    CmpInstructions->push_back(Cmp);
++    DuplicatedInstructionMap.insert(std::pair<Value *, Value *>(Cmp, Cmp));
++    comparisonCounter++;
++  } else if(Ty->isFloatingPointTy()) {
++    auto Cmp = B.CreateCmp(CmpInst::FCMP_UEQ, &V1, &V2);
++    CmpInstructions->push_back(Cmp);
++    DuplicatedInstructionMap.insert(std::pair<Value *, Value *>(Cmp, Cmp));
++    comparisonCounter++;
++  }
++  // Aggregates and vectors are not compared: they may contain uninitialized
++  // elements or padding, which can differ between the two copies.
+ }
+ 
+ 
+-- 
+2.43.0
+

@@ -78,7 +78,10 @@ def build(cfg, bench, conf, paths):
     cmd += conf["flags"].split() + bench.get("flags", "").split()
     cmd += [src, "-o", "prog", "--build-dir", bdir]
     start = time.time()
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    # run inside the build directory: EDDI writes compiled_eddi_functions.csv in
+    # the working directory and DuplicateGlobals reads it back, so parallel
+    # builds must not share it
+    res = subprocess.run(cmd, capture_output=True, text=True, cwd=bdir)
     elapsed = time.time() - start
     with open(os.path.join(bdir, "aspis.log"), "w") as f:
         f.write(res.stdout + res.stderr)
@@ -102,18 +105,34 @@ def read_kv(path):
     return kv
 
 
+def valid_profile(path):
+    """True if path is a complete profile written by `fi profile`."""
+    try:
+        with open(path) as f:
+            lines = f.read().split("\n")
+        return lines[0] == "fi-profile 1" and len(lines) >= 6 + int(lines[4].split()[1])
+    except (OSError, IndexError, ValueError):
+        return False
+
+
 def profile(pool, binary, paths):
     bdir = os.path.dirname(binary)
     prof, golden = os.path.join(bdir, "golden.prof"), os.path.join(bdir, "golden.stdout")
-    if os.path.exists(prof) and os.path.getmtime(prof) >= os.path.getmtime(binary):
+    bench_path = os.path.join(bdir, "bench.txt")
+    if valid_profile(prof) and os.path.getmtime(prof) >= os.path.getmtime(binary) and \
+            os.path.exists(bench_path):
         return prof, golden
-    res = pool.run([paths["fi"], "profile", prof, golden, "--", binary],
+    # the profile is written to a temporary file and renamed at the end, so
+    # that an interrupted campaign never finds a truncated profile
+    res = pool.run([paths["fi"], "profile", prof + ".part", golden, "--", binary],
                    capture_output=True, text=True)
     if res.returncode != 0:
         raise RuntimeError("profiling failed for %s: %s" % (binary, res.stderr))
     bench = pool.run([paths["fi"], "bench", "31", "--", binary], capture_output=True, text=True)
-    with open(os.path.join(bdir, "bench.txt"), "w") as f:
+    with open(bench_path + ".part", "w") as f:
         f.write(bench.stdout)
+    os.replace(bench_path + ".part", bench_path)
+    os.replace(prof + ".part", prof)
     return prof, golden
 
 

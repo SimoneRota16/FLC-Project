@@ -1,0 +1,33 @@
+From 1434b1da155627a66ddff1d025fb71ec0d902153 Mon Sep 17 00:00:00 2001
+From: Simone Rota <simone.rota16@gmail.com>
+Date: Thu, 29 Oct 2026 23:48:38 +0000
+Subject: [PATCH 10/18] fix(EDDI): clone of variable-length allocas
+
+The clone of an alloca is moved before the first non-alloca instruction of
+the block, i.e. before the computation of its size for a VLA: "Instruction does
+not dominate all uses". Allocas with a non-constant size are cloned in place.
+---
+ passes/EDDI.cpp | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/passes/EDDI.cpp b/passes/EDDI.cpp
+index 809e3a7..ce9a736 100755
+--- a/passes/EDDI.cpp
++++ b/passes/EDDI.cpp
+@@ -584,8 +584,11 @@ EDDI::cloneInstr(Instruction &I) {
+   }
+ 
+   // if the instruction is an alloca and alternate-memmap is disabled, place it
+-  // at the end of the list of alloca instruction
+-  if (AlternateMemMapEnabled == false && isa<AllocaInst>(I)) {
++  // at the end of the list of alloca instruction. Allocas with a size computed
++  // at run time (e.g. variable-length arrays) are placed after the original,
++  // since the size has to be computed before.
++  if (AlternateMemMapEnabled == false && isa<AllocaInst>(I) &&
++      isa<Constant>(cast<AllocaInst>(I).getArraySize())) {
+     IClone->insertBefore(&*I.getParent()->getFirstNonPHIOrDbgOrAlloca());
+   } // else place it right after the instruction we are working on
+   else {
+-- 
+2.43.0
+

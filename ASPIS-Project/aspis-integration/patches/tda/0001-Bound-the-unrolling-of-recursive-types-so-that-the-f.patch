@@ -1,0 +1,89 @@
+From ea654af91c371d8479fc2ad6e8520b1d2335ca9f Mon Sep 17 00:00:00 2001
+From: Simone Rota <simone.rota16@gmail.com>
+Date: Thu, 29 Oct 2026 22:59:19 +0000
+Subject: [PATCH] Bound the unrolling of recursive types so that the fixed
+ point is reached
+
+---
+ src/TypeDeductionAnalysis.cpp | 51 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 51 insertions(+)
+
+diff --git a/src/TypeDeductionAnalysis.cpp b/src/TypeDeductionAnalysis.cpp
+index 8e0b983..48010a9 100644
+--- a/src/TypeDeductionAnalysis.cpp
++++ b/src/TypeDeductionAnalysis.cpp
+@@ -21,6 +21,55 @@ using namespace tda;
+ 
+ AnalysisKey TypeDeductionAnalysis::Key;
+ 
++namespace {
++
++// Transparent types are trees, so a recursive type such as
++//   struct node { int key; struct node *next; };
++// is represented by unrolling it. Every iteration of the fixed-point loop can
++// unroll it once more (a load from node->next has the type of the field, which
++// is merged back into the struct), so the deduced types keep growing and the
++// analysis never terminates. A pointer to a struct type that already appears
++// on the path from the root is therefore kept opaque, and the nesting depth is
++// bounded for types without a name (e.g. structs deduced from their fields).
++constexpr unsigned MaxStructOccurrences = 1;
++constexpr unsigned MaxNestingDepth = 16;
++
++void limitTypeNesting(TransparentType* type, SmallVectorImpl<Type*>& structPath, unsigned depth) {
++  if (!type)
++    return;
++  if (auto* ptrType = dyn_cast<TransparentPointerType>(type)) {
++    TransparentType* pointedType = ptrType->getPointedType();
++    if (!pointedType)
++      return;
++    const TransparentType* element = pointedType;
++    while (const auto* arrayType = dyn_cast<TransparentArrayType>(element))
++      element = arrayType->getElementType();
++    bool recursive = isa<TransparentStructType>(element) && element->getLLVMType()
++                  && count(structPath, element->getLLVMType()) >= MaxStructOccurrences;
++    if (recursive || depth >= MaxNestingDepth) {
++      ptrType->setPointedType(nullptr);
++      return;
++    }
++    limitTypeNesting(pointedType, structPath, depth + 1);
++  }
++  else if (auto* arrayType = dyn_cast<TransparentArrayType>(type)) {
++    limitTypeNesting(arrayType->getElementType(), structPath, depth + 1);
++  }
++  else if (auto* structType = dyn_cast<TransparentStructType>(type)) {
++    structPath.push_back(structType->getLLVMType());
++    for (unsigned i = 0; i < structType->getNumFieldTypes(); i++)
++      limitTypeNesting(structType->getFieldType(i), structPath, depth + 1);
++    structPath.pop_back();
++  }
++}
++
++void limitTypeNesting(TransparentType* type) {
++  SmallVector<Type*, 8> structPath;
++  limitTypeNesting(type, structPath, 0);
++}
++
++} // namespace
++
+ TypeDeductionAnalysis::Result TypeDeductionAnalysis::run(Module& m, ModuleAnalysisManager&) {
+   LLVM_DEBUG(log().logln("[TypeDeductionAnalysis]", Logger::Magenta));
+   Result result;
+@@ -126,6 +175,7 @@ const TypeAliasSet& TypeDeductionAnalysis::updateDeducedTypes(Value* value,
+   TypeAliasSet& typeAliasSet = deducedTypes[value];
+   if (!deducedType)
+     return typeAliasSet;
++  limitTypeNesting(deducedType.get());
+ 
+   Logger& logger = log();
+   auto indenter = logger.getIndenter();
+@@ -141,6 +191,7 @@ const TypeAliasSet& TypeDeductionAnalysis::updateDeducedTypes(Value* value,
+     typeAliasSet, [&deducedType](const auto& type) -> bool { return type->isCompatibleWith(deducedType.get()); });
+   if (iter != typeAliasSet.end()) {
+     std::unique_ptr<TransparentType> merged = (*iter)->mergeWith(deducedType.get());
++    limitTypeNesting(merged.get());
+     if (*merged != **iter) {
+       LLVM_DEBUG(
+         logDeductionValue();
+-- 
+2.43.0
+

@@ -1,0 +1,208 @@
+From 367541e60dcd84c22a12d4bead5f050fa7759b32 Mon Sep 17 00:00:00 2001
+From: Simone Rota <simone.rota16@gmail.com>
+Date: Thu, 29 Oct 2026 23:47:54 +0000
+Subject: [PATCH 09/18] fix(EDDI): duplication of calls with variadic and
+ by-value arguments
+
+- after duplicateOperands the called operand of a direct call is the _dup
+  function, so getCalledFunction() returns null and the variadic arguments
+  were duplicated too: the number of fixed arguments is now taken from the
+  type of the call, and the variadic ones are passed once;
+- the parameter attributes were copied to the duplicated arguments only for
+  indirect calls, and the _dup function had them only on the original
+  parameters: with byval arguments caller and callee disagreed on the calling
+  convention and the program crashed. The attributes (except sret) are now on
+  both copies, in the call and in the _dup function.
+---
+ passes/EDDI.cpp | 143 +++++++++++++++++++++++++-----------------------
+ 1 file changed, 74 insertions(+), 69 deletions(-)
+
+diff --git a/passes/EDDI.cpp b/passes/EDDI.cpp
+index 1eef661..809e3a7 100755
+--- a/passes/EDDI.cpp
++++ b/passes/EDDI.cpp
+@@ -1365,6 +1365,23 @@ int EDDI::transformCallBaseInst(CallBase *CInstr, IRBuilder<> &B, BasicBlock &Er
+     return 0;
+   }
+ 
++  // Number of fixed parameters, taken from the type of the call: the called
++  // operand may already be the _dup function (see duplicateOperands), whose
++  // type does not match the one of the call anymore.
++  FunctionType *CallFnType = CInstr->getFunctionType();
++  unsigned NumFixedArgs = CallFnType->getNumParams();
++
++  // Index of the i-th argument of the original call and of its duplicate in
++  // the call with duplicated arguments
++  auto originalArgIdx = [&](unsigned i) -> unsigned {
++    if (i >= NumFixedArgs)
++      return i + NumFixedArgs;
++    return AlternateMemMapEnabled ? i * 2 + 1 : i + NumFixedArgs;
++  };
++  auto duplicateArgIdx = [&](unsigned i) -> unsigned {
++    return AlternateMemMapEnabled ? i * 2 : i;
++  };
++
+   for (unsigned i = 0; i < CInstr->arg_size(); i++) {
+     // Populate args and ParamTypes from the original instruction
+     Value *Arg = CInstr->getArgOperand(i);
+@@ -1376,27 +1393,18 @@ int EDDI::transformCallBaseInst(CallBase *CInstr, IRBuilder<> &B, BasicBlock &Er
+     }
+ 
+     // Duplicating only fixed parameters, passing just one time the variadic arguments
+-    if(Callee != NULL && Callee->getFunctionType() != NULL && i >= Callee->getFunctionType()->getNumParams()) {
++    if(i >= NumFixedArgs) {
+       args.push_back(Arg);
+-      if(Callee == NULL) {
+-        ParamTypes.push_back(Arg->getType());
+-      }
++    } else if (!AlternateMemMapEnabled) {
++      args.insert(args.begin() + i, Copy);
++      args.push_back(Arg);
++      ParamTypes.insert(ParamTypes.begin() + i, CallFnType->getParamType(i));
++      ParamTypes.push_back(CallFnType->getParamType(i));
+     } else {
+-      if (!AlternateMemMapEnabled) {
+-        args.insert(args.begin() + i, Copy);
+-        args.push_back(Arg);
+-        if(Callee == NULL) {
+-          ParamTypes.insert(ParamTypes.begin() + i, Arg->getType());
+-          ParamTypes.push_back(Arg->getType());
+-        }
+-      } else {
+-        args.push_back(Copy);
+-        args.push_back(Arg);
+-        if(Callee == NULL) {
+-          ParamTypes.push_back(Arg->getType());
+-          ParamTypes.push_back(Arg->getType());
+-        }
+-      }
++      args.push_back(Copy);
++      args.push_back(Arg);
++      ParamTypes.push_back(CallFnType->getParamType(i));
++      ParamTypes.push_back(CallFnType->getParamType(i));
+     }
+   }
+ 
+@@ -1404,65 +1412,52 @@ int EDDI::transformCallBaseInst(CallBase *CInstr, IRBuilder<> &B, BasicBlock &Er
+   IRBuilder<> CallBuilder(CInstr);
+ 
+   // In case of duplication of an indirect call, call the function with doubled parameters
++  FunctionType *FuncType = nullptr;
++  Value *CalledValue = nullptr;
+   if (Callee == NULL) {
+     // Create the new function type
+-    Type *ReturnType = CInstr->getType();
+-    FunctionType *FuncType = FunctionType::get(ReturnType, ParamTypes, false);
++    FuncType = FunctionType::get(CInstr->getType(), ParamTypes, CallFnType->isVarArg());
++    CalledValue = CInstr->getCalledOperand();
++  } else {
++    FuncType = Fn->getFunctionType();
++    CalledValue = Fn;
++  }
+ 
+-    // Create a dummy function pointer (Fn) for the new call
+-    Value *Fn = CallBuilder.CreateBitCast(CInstr->getCalledOperand(), FuncType->getPointerTo());
++  // Create the new call or invoke instruction
++  if (isa<InvokeInst>(CInstr)) {
++    InvokeInst *IInst=cast<InvokeInst>(CInstr);
++    NewCInstr = CallBuilder.CreateInvoke(
++        FuncType, CalledValue, IInst->getNormalDest(), IInst->getUnwindDest(), args);
++  } else {
++    NewCInstr = CallBuilder.CreateCall(FuncType, CalledValue, args);
++  }
+ 
+-    // Create the new call or invoke instruction
+-    if (isa<InvokeInst>(CInstr)) {
+-      InvokeInst *IInst=cast<InvokeInst>(CInstr);
+-      NewCInstr = CallBuilder.CreateInvoke(
+-          FuncType, Fn, IInst->getNormalDest(), IInst->getUnwindDest(), args);
+-    } else {
+-      NewCInstr = CallBuilder.CreateCall(FuncType, Fn, args);
+-    }
+-
+-    // Transfer parameter attributes
+-    for (unsigned i = 0; i < CInstr->arg_size(); ++i) {
+-      AttributeSet ParamAttrs = CInstr->getAttributes().getParamAttrs(i);
+-      for(auto &attr : ParamAttrs) {
+-        if(attr.getKindAsEnum() != Attribute::AttrKind::StructRet){
+-          // Assuming that indirect function calls aren't variadic
+-          if (!AlternateMemMapEnabled) {
+-            cast<CallBase>(NewCInstr)->addParamAttr(i, attr);
+-            cast<CallBase>(NewCInstr)->addParamAttr(i + CInstr->arg_size(), attr);
+-          } else {
+-            cast<CallBase>(NewCInstr)->addParamAttr(i*2, attr);
+-            cast<CallBase>(NewCInstr)->addParamAttr(i*2 + 1 , attr);
+-          }
+-        }
++  // Transfer the parameter attributes to both copies of each argument: the
++  // ABI-affecting ones (e.g. byval) must match the ones of the parameters of
++  // the _dup function (see duplicateFnArgs)
++  for (unsigned i = 0; i < CInstr->arg_size(); ++i) {
++    AttributeSet ParamAttrs = CInstr->getAttributes().getParamAttrs(i);
++    for(auto &attr : ParamAttrs) {
++      if(attr.hasAttribute(Attribute::AttrKind::StructRet)) {
++        continue;
++      }
++      cast<CallBase>(NewCInstr)->addParamAttr(originalArgIdx(i), attr);
++      if (i < NumFixedArgs) {
++        cast<CallBase>(NewCInstr)->addParamAttr(duplicateArgIdx(i), attr);
+       }
+     }
++  }
+ 
+-    // Copy metadata and debug location
+-    if (DebugEnabled) {
+-      NewCInstr->setDebugLoc(CInstr->getDebugLoc());
+-    }
+-
+-    // Replace the old instruction with the new one
+-    CInstr->replaceNonMetadataUsesWith(NewCInstr);
+-
+-    // Remove original instruction since we created the duplicated version
+-    res = 1;
+-  } else {
+-    if (isa<InvokeInst>(CInstr)) {
+-      InvokeInst *IInst=cast<InvokeInst>(CInstr);
+-      NewCInstr = CallBuilder.CreateInvoke(Fn->getFunctionType(), Fn,IInst->getNormalDest(),IInst->getUnwindDest(), args);
+-    } else {
+-      NewCInstr =  CallBuilder.CreateCall(Fn->getFunctionType(), Fn, args);
+-    }
+-
+-    if (DebugEnabled) {
+-      NewCInstr->setDebugLoc(CInstr->getDebugLoc());
+-    }
+-    res = 1;
+-    CInstr->replaceNonMetadataUsesWith(NewCInstr);
++  // Copy metadata and debug location
++  if (DebugEnabled) {
++    NewCInstr->setDebugLoc(CInstr->getDebugLoc());
+   }
+ 
++  // Replace the old instruction with the new one, the original one is removed
++  // since we created the duplicated version
++  CInstr->replaceNonMetadataUsesWith(NewCInstr);
++  res = 1;
++
+   if(NewCInstr) {
+     DuplicatedCalls.insert(NewCInstr);
+   }
+@@ -1723,6 +1718,16 @@ EDDI::duplicateFnArgs(Function &Fn, Module &Md) {
+   CloneFunctionInto(ClonedFunc, &Fn, Params,
+                     CloneFunctionChangeType::GlobalChanges, returns);
+ 
++  // CloneFunctionInto copies the attributes of each parameter only to the
++  // parameter it is mapped to: the duplicated parameters need them too, since
++  // some of them change the calling convention (e.g. byval)
++  for (unsigned i = 0; i < Fn.arg_size(); i++) {
++    unsigned DupIdx = AlternateMemMapEnabled ? i * 2 + 1 : i;
++    AttrBuilder Attrs(Fn.getContext(), Fn.getAttributes().getParamAttrs(i));
++    Attrs.removeAttribute(Attribute::AttrKind::StructRet);
++    ClonedFunc->addParamAttrs(DupIdx, Attrs);
++  }
++
+   return ClonedFunc;
+ }
+ 
+-- 
+2.43.0
+

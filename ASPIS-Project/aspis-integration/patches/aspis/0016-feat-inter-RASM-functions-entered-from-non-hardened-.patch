@@ -1,0 +1,93 @@
+From 2f86f5210188e170ae582993a3827167db9cf8d0 Mon Sep 17 00:00:00 2001
+From: Simone Rota <simone.rota16@gmail.com>
+Date: Thu, 29 Oct 2026 23:53:07 +0000
+Subject: [PATCH 16/18] feat(inter-RASM): functions entered from non-hardened
+ code
+
+With inter-function RASM the caller sets the signatures of the callee before
+a direct call. Functions called through a pointer (callbacks of qsort, atexit
+handlers, constructors, indirect calls) and main after the constructors were
+entered with the signatures of another function: signature mismatch.
+- main and the functions whose address is taken set the runtime signature to
+  the one of their first block (main also initializes the ret signature);
+- around indirect calls and calls to non-compiled functions the signatures are
+  saved and restored.
+---
+ passes/RASM.cpp | 46 +++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 45 insertions(+), 1 deletion(-)
+
+diff --git a/passes/RASM.cpp b/passes/RASM.cpp
+index bb2db3d..f61dbba 100644
+--- a/passes/RASM.cpp
++++ b/passes/RASM.cpp
+@@ -12,6 +12,7 @@
+ #include "llvm/IR/Function.h"
+ #include "llvm/IR/IRBuilder.h"
+ #include "llvm/IR/Instructions.h"
++#include "llvm/IR/IntrinsicInst.h"
+ #include "llvm/IR/Metadata.h"
+ #include "llvm/Pass.h"
+ #include "llvm/Support/raw_ostream.h"
+@@ -426,8 +427,18 @@ PreservedAnalyses RASM::run(Module &Md, ModuleAnalysisManager &AM) {
+           Value* Cond2 = B.CreateCmp(llvm::CmpInst::ICMP_EQ, RuntimeSigInstr, llvm::ConstantInt::get(IntType, INIT_SIGNATURE));
+           Value* CondAnd = B.CreateAnd(Cond1, Cond2);
+ 
++          // A function that can be entered from code that does not set the
++          // runtime signature, i.e. main, the functions called through a
++          // pointer (callbacks, constructors, ...) always sets it to the one of
++          // its first basic block. main also initializes the ret signature,
++          // the others keep it for the direct callers that set it.
++          if (Fn.getName() == "main") {
++            CondAnd = B.getTrue();
++          }
++          Value *EnteredFromOutside = Fn.hasAddressTaken() ? B.getTrue() : CondAnd;
++
+           // if they contain the initialization values, update them using sig and num_bbs+sig
+-          Value* NewRuntimeSig = B.CreateSelect(CondAnd, llvm::ConstantInt::get(IntType, currSig + subCurrSig), RuntimeSigInstr);
++          Value* NewRuntimeSig = B.CreateSelect(EnteredFromOutside, llvm::ConstantInt::get(IntType, currSig + subCurrSig), RuntimeSigInstr);
+           Value* NewRetSig = B.CreateSelect(CondAnd, llvm::ConstantInt::get(IntType, RandomNumberBBs.size() + currSig), RetSigInstr);
+           B.CreateStore(NewRuntimeSig, RuntimeSig, true);
+           B.CreateStore(NewRetSig, RetSig, true);
+@@ -452,6 +463,39 @@ PreservedAnalyses RASM::run(Module &Md, ModuleAnalysisManager &AM) {
+           }
+         }
+ 
++        #if (INTER_FUNCTION_CFC == 1)
++        // A call through a pointer or to a function that is not compiled
++        // (e.g. qsort or atexit) may execute functions that update the global
++        // signatures without restoring them, so they are saved before the
++        // call and restored after it.
++        for (auto &Elem : RandomNumberBBs) {
++          BasicBlock *BB = Elem.first;
++          if (BB->getParent() != &Fn) {
++            continue;
++          }
++          std::vector<CallInst *> Calls;
++          for (Instruction &I : *BB) {
++            auto *Call = dyn_cast<CallInst>(&I);
++            if (Call == nullptr || isa<IntrinsicInst>(Call)) {
++              continue;
++            }
++            Function *Callee = Call->getCalledFunction();
++            if (Callee == nullptr || (!shouldCompile(*Callee, FuncAnnotations) &&
++                !Callee->getName().contains("Handler"))) {
++              Calls.push_back(Call);
++            }
++          }
++          for (CallInst *Call : Calls) {
++            IRBuilder<> BBefore(Call);
++            Value *SavedRuntimeSig = BBefore.CreateLoad(IntType, RuntimeSig, true);
++            Value *SavedRetSig = BBefore.CreateLoad(IntType, RetSig, true);
++            IRBuilder<> BAfter(Call->getNextNode());
++            BAfter.CreateStore(SavedRuntimeSig, RuntimeSig, true);
++            BAfter.CreateStore(SavedRetSig, RetSig, true);
++          }
++        }
++        #endif
++
+         // When a setjmp-like call returns a second time (because of a call to
+         // longjmp), the runtime signature has the value it had where longjmp
+         // was called: set it back to the one expected in the block of the call
+-- 
+2.43.0
+

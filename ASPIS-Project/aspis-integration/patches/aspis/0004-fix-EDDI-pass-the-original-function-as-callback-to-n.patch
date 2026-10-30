@@ -1,0 +1,40 @@
+From 21e929ffaa06297d3052e8d552074ff070084f21 Mon Sep 17 00:00:00 2001
+From: Simone Rota <simone.rota16@gmail.com>
+Date: Thu, 29 Oct 2026 23:44:11 +0000
+Subject: [PATCH 04/18] fix(EDDI): pass the original function as callback to
+ non-duplicated functions
+
+A function passed as argument (e.g. the comparator of qsort/bsearch, an
+atexit handler) was replaced with its _dup version, that has the duplicated
+signature: the non-hardened callee then called it with the original arguments
+and the program crashed. The original function is passed when the callee has
+no _dup version.
+---
+ passes/EDDI.cpp | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/passes/EDDI.cpp b/passes/EDDI.cpp
+index 4c85cea..6f5bebd 100755
+--- a/passes/EDDI.cpp
++++ b/passes/EDDI.cpp
+@@ -694,6 +694,17 @@ void EDDI::duplicateOperands(
+       // operand of the clone instruction
+       Function *FnOperand = cast<Function>(V);
+       auto DuplicateFn = getFunctionDuplicate(FnOperand);
++      // A function passed as argument to a function without a duplicate (e.g.
++      // the comparator of qsort or a handler registered with atexit) is
++      // called back by non-hardened code with its original signature, so the
++      // original function has to be passed.
++      if (auto *CB = dyn_cast<CallBase>(&I);
++          CB && CB->isArgOperand(&I.getOperandUse(J))) {
++        Function *Callee = CB->getCalledFunction();
++        if (Callee != nullptr && getFunctionDuplicate(Callee) == nullptr) {
++          DuplicateFn = nullptr;
++        }
++      }
+       if (DuplicateFn != NULL) {
+         I.setOperand(J, DuplicateFn);
+         if (IClone != nullptr) {
+-- 
+2.43.0
+

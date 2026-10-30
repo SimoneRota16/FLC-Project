@@ -1,0 +1,101 @@
+From 45929fe44b77d462fcc580207f38dca96e5484f7 Mon Sep 17 00:00:00 2001
+From: Simone Rota <simone.rota16@gmail.com>
+Date: Thu, 29 Oct 2026 23:45:40 +0000
+Subject: [PATCH 06/18] fix(EDDI): remap nested constant expressions to the
+ duplicated globals
+
+Clang emits nested constant GEPs for the access to an element of a
+two-dimensional global array with constant indices
+(gep (gep @m, 0, 8), 0, 6). Only one level was remapped to the duplicated
+global, so the duplicated store wrote the original array and the duplicate was
+never updated (false data corruption). Every constant expression operand is now
+rebuilt on top of the duplicated globals.
+---
+ passes/ASPIS.h  |  1 +
+ passes/EDDI.cpp | 50 ++++++++++++++++++++++++++++---------------------
+ 2 files changed, 30 insertions(+), 21 deletions(-)
+
+diff --git a/passes/ASPIS.h b/passes/ASPIS.h
+index 75e0ec8..52d35f2 100644
+--- a/passes/ASPIS.h
++++ b/passes/ASPIS.h
+@@ -63,6 +63,7 @@ class EDDI : public PassInfoMixin<EDDI> {
+         int isUsedByStore(Instruction &I, Instruction &Use);
+         Instruction* cloneInstr(Instruction &I);
+         void duplicateOperands (Instruction &I, BasicBlock &ErrBB);
++        Constant *getDuplicateConstant(Constant *C, Instruction *I);
+         Value* getPtrFinalValue(Value &V);
+         bool ptrNotDereferenceable(Value &V);
+         Value *getNullSafePointer(Value *Ptr, Type *Ty, IRBuilder<> &B);
+diff --git a/passes/EDDI.cpp b/passes/EDDI.cpp
+index 5f3c910..d730d25 100755
+--- a/passes/EDDI.cpp
++++ b/passes/EDDI.cpp
+@@ -665,28 +665,15 @@ void EDDI::duplicateOperands(
+         }
+       }
+     }
+-    // It may happen that we have a GEP as inline operand of a instruction. The
+-    // operands of the GEP are not duplicated leading to errors, so we manually
+-    // clone of the GEP for the clone of the original instruction.
+-    else if (isa<GEPOperator>(V) && isa<ConstantExpr>(V)) {
++    // It may happen that we have a constant expression (e.g. a GEP, possibly
++    // nested, as in the access to an element of a two-dimensional global
++    // array) as inline operand of a instruction. Its operands are not
++    // duplicated, so we rebuild it on top of the duplicated globals for the
++    // clone of the original instruction.
++    else if (isa<ConstantExpr>(V)) {
+       if (IClone != nullptr) {
+-        GEPOperator *GEPOperand = cast<GEPOperator>(IClone->getOperand(J));
+-        Value *PtrOperand = GEPOperand->getPointerOperand();
+-        Value *ClonePtrOperand = getDuplicateValue(PtrOperand, &I);
+-        // update the duplicate GEP operator using the duplicate of the pointer
+-        // operand
+-        if (ClonePtrOperand != nullptr) {
+-          std::vector<Value *> indices;
+-          for (auto &Idx : GEPOperand->indices()) {
+-            indices.push_back(Idx);
+-          }
+-          Constant *CloneGEPOperand =
+-              cast<ConstantExpr>(GEPOperand)
+-                  ->getInBoundsGetElementPtr(
+-                      GEPOperand->getSourceElementType(),
+-                      cast<Constant>(ClonePtrOperand),
+-                      ArrayRef<Value *>(indices));
+-          IClone->setOperand(J, CloneGEPOperand);
++        if (Constant *DuplicateExpr = getDuplicateConstant(cast<Constant>(V), &I)) {
++          IClone->setOperand(J, DuplicateExpr);
+         }
+       }
+     } else if (isa<Function>(V)) {
+@@ -727,6 +714,27 @@ void EDDI::duplicateOperands(
+   }
+ }
+ 
++// Returns the constant C in which every global variable that has been
++// duplicated is replaced by its duplicate, or nullptr if C does not refer to
++// any duplicated global variable.
++Constant *EDDI::getDuplicateConstant(Constant *C, Instruction *I) {
++  if (isa<GlobalVariable>(C)) {
++    return dyn_cast_or_null<Constant>(getDuplicateValue(C, I));
++  }
++  auto *CE = dyn_cast<ConstantExpr>(C);
++  if (CE == nullptr) {
++    return nullptr;
++  }
++  SmallVector<Constant *, 4> Operands;
++  bool Changed = false;
++  for (Value *Op : CE->operand_values()) {
++    Constant *Duplicate = getDuplicateConstant(cast<Constant>(Op), I);
++    Operands.push_back(Duplicate != nullptr ? Duplicate : cast<Constant>(Op));
++    Changed |= Duplicate != nullptr;
++  }
++  return Changed ? CE->getWithOperands(Operands) : nullptr;
++}
++
+ // recursively follow store instructions to find the pointer final value,
+ // if the value cannot be found (e.g. when the pointer is passed as function
+ // argument) we return NULL.
+-- 
+2.43.0
+

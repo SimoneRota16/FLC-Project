@@ -18,9 +18,12 @@
  *             <tmp_dir> -- <program> [args]
  *       Runs <count> experiments. Each one picks a dynamic instruction
  *       uniformly at random (i.e. a random point in time), stops the program
- *       right before that instruction with a software breakpoint, corrupts
- *       the processor state according to <model>, detaches and classifies the
- *       outcome. One CSV line per experiment is written to stdout.
+ *       right before that instruction, corrupts the processor state according
+ *       to <model>, detaches and classifies the outcome. One CSV line per
+ *       experiment is written to stdout. The program is stopped with a
+ *       hardware execution breakpoint that counts the executions of the
+ *       target instruction (perf_event_open with sigtrap, Linux >= 5.13), or
+ *       with a software breakpoint if it is not available (or FI_NO_HW=1).
  *       Models:
  *         reg     single bit-flip in one of the 16 general purpose registers
  *         branch  the outcome of a conditional jump is inverted
@@ -47,17 +50,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <linux/hw_breakpoint.h>
+#include <linux/perf_event.h>
 #include <sys/personality.h>
 #include <sys/ptrace.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/user.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
+#ifndef TRAP_PERF
+#define TRAP_PERF 6 /* si_code of the SIGTRAP sent by a perf event with sigtrap */
+#endif
+
 #define KIND_OTHER 0
 #define KIND_JCC 1
+
+/* set to 0 by the first perf_event_open failure, or with FI_NO_HW=1 */
+static int use_hw_breakpoints = 1;
 
 typedef struct {
     uint64_t off;   /* offset from the start of the executable text */
@@ -401,6 +414,101 @@ static int wait_with_timeout(pid_t pid, int *status, uint64_t timeout_us) {
     }
 }
 
+/* Software method: an int3 is written at pc, and every time it is hit it is
+ * removed, the instruction is single-stepped and the int3 is written back,
+ * until the (occurrence+1)-th execution of pc. Returns 1 when the child is
+ * stopped right before that execution, 0 if it terminated before. */
+static int run_to_target_sw(pid_t pid, uint64_t pc, uint64_t occurrence, int *status) {
+    struct user_regs_struct regs;
+    long orig = ptrace(PTRACE_PEEKTEXT, pid, (void *)pc, NULL);
+    long patched = (orig & ~0xffL) | 0xcc;
+    uint64_t hits = 0;
+    int sig = 0;
+    ptrace(PTRACE_POKETEXT, pid, (void *)pc, (void *)patched);
+    for (;;) {
+        if (ptrace(PTRACE_CONT, pid, NULL, (void *)(long)sig) < 0)
+            die("PTRACE_CONT");
+        sig = 0;
+        if (waitpid(pid, status, 0) < 0)
+            die("waitpid");
+        if (WIFEXITED(*status) || WIFSIGNALED(*status))
+            return 0; /* target never reached */
+        if (WSTOPSIG(*status) != SIGTRAP) {
+            sig = WSTOPSIG(*status);
+            continue;
+        }
+        ptrace(PTRACE_GETREGS, pid, NULL, &regs);
+        if (regs.rip - 1 != pc)
+            continue;
+        ptrace(PTRACE_POKETEXT, pid, (void *)pc, (void *)orig);
+        regs.rip = pc;
+        ptrace(PTRACE_SETREGS, pid, NULL, &regs);
+        if (hits++ == occurrence)
+            return 1;
+        if (ptrace(PTRACE_SINGLESTEP, pid, NULL, NULL) < 0)
+            die("PTRACE_SINGLESTEP");
+        if (waitpid(pid, status, 0) < 0)
+            die("waitpid");
+        if (WIFEXITED(*status) || WIFSIGNALED(*status))
+            return 0;
+        ptrace(PTRACE_POKETEXT, pid, (void *)pc, (void *)patched);
+    }
+}
+
+/* Hardware method: an execution breakpoint on pc (debug registers, through
+ * perf_event_open) counts the executions without stopping the child, and
+ * sends it a synchronous SIGTRAP when the (occurrence+1)-th one is about to
+ * happen. About 3x faster than the software method under a hypervisor, where
+ * every ptrace stop is expensive. Returns 1 when the child is stopped right
+ * before that execution, 0 if it terminated before, -1 if hardware
+ * breakpoints are not available. */
+static int run_to_target_hw(pid_t pid, uint64_t pc, uint64_t occurrence, int *status) {
+    struct perf_event_attr attr;
+    struct user_regs_struct regs;
+    siginfo_t si;
+    int fd, sig = 0;
+
+    memset(&attr, 0, sizeof(attr));
+    attr.type = PERF_TYPE_BREAKPOINT;
+    attr.size = sizeof(attr);
+    attr.bp_type = HW_BREAKPOINT_X;
+    attr.bp_addr = pc;
+    attr.bp_len = sizeof(long);
+    attr.sample_period = occurrence + 1;
+    attr.sigtrap = 1;
+    attr.remove_on_exec = 1; /* required by sigtrap; the child already exec'd */
+    attr.exclude_kernel = 1;
+    attr.exclude_hv = 1;
+    fd = (int)syscall(SYS_perf_event_open, &attr, pid, -1, -1, PERF_FLAG_FD_CLOEXEC);
+    if (fd < 0)
+        return -1;
+    for (;;) {
+        if (ptrace(PTRACE_CONT, pid, NULL, (void *)(long)sig) < 0)
+            die("PTRACE_CONT");
+        sig = 0;
+        if (waitpid(pid, status, 0) < 0)
+            die("waitpid");
+        if (WIFEXITED(*status) || WIFSIGNALED(*status)) {
+            close(fd);
+            return 0; /* target never reached */
+        }
+        if (WSTOPSIG(*status) != SIGTRAP) {
+            sig = WSTOPSIG(*status);
+            continue;
+        }
+        if (ptrace(PTRACE_GETSIGINFO, pid, NULL, &si) == 0 && si.si_code == TRAP_PERF) {
+            close(fd); /* removes the breakpoint */
+            ptrace(PTRACE_GETREGS, pid, NULL, &regs);
+            if (regs.rip != pc) {
+                fprintf(stderr, "fi: hardware breakpoint stopped at %llx instead of %lx\n",
+                        regs.rip, (unsigned long)pc);
+                exit(100);
+            }
+            return 1;
+        }
+    }
+}
+
 static int cmd_inject(const char *prof_path, const char *golden_path, const char *model,
                       uint64_t seed, long count, long timeout_ms, const char *tmp_dir, char **argv) {
     Profile prof;
@@ -418,6 +526,8 @@ static int cmd_inject(const char *prof_path, const char *golden_path, const char
         return 100;
     }
     load_profile(prof_path, &prof);
+    if (getenv("FI_NO_HW") != NULL)
+        use_hw_breakpoints = 0;
     if (mkdir(tmp_dir, 0755) < 0 && errno != EEXIST)
         die("mkdir tmp_dir");
     if (m_branch && prof.n_jcc == 0) {
@@ -430,14 +540,13 @@ static int cmd_inject(const char *prof_path, const char *golden_path, const char
 
     printf("id,model,pc_off,occurrence,target,bit,injected,outcome,exit,signal,time_us\n");
     for (e = 0; e < count; e++) {
-        uint64_t occurrence = 0, hits = 0, start;
+        uint64_t occurrence = 0, start;
         size_t idx = pick_target(&prof, m_branch, &occurrence);
         const PcInfo *pi = &prof.pcs[idx];
         uint64_t pc = prof.text_lo + pi->off;
         int reg = (int)rng_below(16), bit = (int)rng_below(64);
         uint64_t jump_to = 0;
-        int injected = 0, status = 0, timed_out = 0, sig = 0;
-        long orig, patched;
+        int injected = 0, status = 0, timed_out = 0, reached;
         struct user_regs_struct regs;
         const char *outcome;
         char target[32];
@@ -459,52 +568,25 @@ static int cmd_inject(const char *prof_path, const char *golden_path, const char
 
         start = now_us();
         pid = spawn(argv, out_path, err_path, 1);
-        orig = ptrace(PTRACE_PEEKTEXT, pid, (void *)pc, NULL);
-        patched = (orig & ~0xffL) | 0xcc;
-        ptrace(PTRACE_POKETEXT, pid, (void *)pc, (void *)patched);
-        for (;;) {
-            if (ptrace(PTRACE_CONT, pid, NULL, (void *)(long)sig) < 0)
-                die("PTRACE_CONT");
-            sig = 0;
-            if (waitpid(pid, &status, 0) < 0)
-                die("waitpid");
-            if (WIFEXITED(status) || WIFSIGNALED(status))
-                break; /* target never reached */
-            if (WSTOPSIG(status) != SIGTRAP) {
-                sig = WSTOPSIG(status);
-                continue;
-            }
+        reached = use_hw_breakpoints ? run_to_target_hw(pid, pc, occurrence, &status) : -1;
+        if (reached < 0) {
+            use_hw_breakpoints = 0;
+            reached = run_to_target_sw(pid, pc, occurrence, &status);
+        }
+        if (reached) {
             ptrace(PTRACE_GETREGS, pid, NULL, &regs);
-            if (regs.rip - 1 != pc) {
-                sig = 0;
-                continue;
+            if (m_reg) {
+                *gpr(&regs, reg) ^= 1ull << bit;
+            } else if (m_branch) {
+                uint64_t next = pc + (uint64_t)pi->len;
+                regs.rip = jcc_taken(pi->cc, regs.eflags) ? next : next + (uint64_t)pi->rel;
+            } else {
+                regs.rip = jump_to;
             }
-            ptrace(PTRACE_POKETEXT, pid, (void *)pc, (void *)orig);
-            regs.rip = pc;
-            if (hits == occurrence) {
-                if (m_reg) {
-                    *gpr(&regs, reg) ^= 1ull << bit;
-                } else if (m_branch) {
-                    uint64_t next = pc + (uint64_t)pi->len;
-                    regs.rip = jcc_taken(pi->cc, regs.eflags) ? next : next + (uint64_t)pi->rel;
-                } else {
-                    regs.rip = jump_to;
-                }
-                ptrace(PTRACE_SETREGS, pid, NULL, &regs);
-                ptrace(PTRACE_DETACH, pid, NULL, NULL);
-                injected = 1;
-                timed_out = wait_with_timeout(pid, &status, (uint64_t)timeout_ms * 1000u);
-                break;
-            }
-            hits++;
             ptrace(PTRACE_SETREGS, pid, NULL, &regs);
-            if (ptrace(PTRACE_SINGLESTEP, pid, NULL, NULL) < 0)
-                die("PTRACE_SINGLESTEP");
-            if (waitpid(pid, &status, 0) < 0)
-                die("waitpid");
-            if (WIFEXITED(status) || WIFSIGNALED(status))
-                break;
-            ptrace(PTRACE_POKETEXT, pid, (void *)pc, (void *)patched);
+            ptrace(PTRACE_DETACH, pid, NULL, NULL);
+            injected = 1;
+            timed_out = wait_with_timeout(pid, &status, (uint64_t)timeout_ms * 1000u);
         }
 
         if (timed_out) {

@@ -1,0 +1,43 @@
+From bdc14c727b633658ffc73b41a4f374e852d2c2d0 Mon Sep 17 00:00:00 2001
+From: Simone Rota <simone.rota16@gmail.com>
+Date: Thu, 29 Oct 2026 23:53:54 +0000
+Subject: [PATCH 18/18] test: enable inter-RASM on cpp_class, cpp_heap and
+ cpp_template
+
+With the support for functions entered from non-hardened code these tests
+pass with every data protection technique also with --inter-rasm.
+---
+ testing/config/tests.toml | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/testing/config/tests.toml b/testing/config/tests.toml
+index 6927e0b..908f2d7 100644
+--- a/testing/config/tests.toml
++++ b/testing/config/tests.toml
+@@ -99,7 +99,6 @@ source_file = "cpp/simple/add.cpp"
+ [[tests]]
+ test_name = "cpp_class"
+ source_file = "cpp/simple/class.cpp"
+-black_list = ["--inter-rasm"]
+ 
+ [[tests]]
+ test_name = "cpp_class_var-decl-sign"
+@@ -126,7 +125,6 @@ source_file = "cpp/simple/func.cpp"
+ [[tests]]
+ test_name = "cpp_heap"
+ source_file = "cpp/simple/heap.cpp"
+-black_list = ["--inter-rasm"]
+ 
+ [[tests]]
+ test_name = "cpp_inline_constexpr"
+@@ -157,7 +155,6 @@ black_list = ["--inter-rasm", "--racfed"]
+ [[tests]]
+ test_name = "cpp_template"
+ source_file = "cpp/simple/template.cpp"
+-black_list = ["--inter-rasm"]
+ 
+ [[tests]]
+ test_name = "cpp_threads"
+-- 
+2.43.0
+

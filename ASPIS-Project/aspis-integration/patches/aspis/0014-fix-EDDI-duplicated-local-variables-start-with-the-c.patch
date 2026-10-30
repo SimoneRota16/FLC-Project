@@ -1,0 +1,97 @@
+From 832f39f934d75305003d2e7c464026ca5984a619 Mon Sep 17 00:00:00 2001
+From: Simone Rota <simone.rota16@gmail.com>
+Date: Thu, 29 Oct 2026 23:51:37 +0000
+Subject: [PATCH 14/18] fix(EDDI): duplicated local variables start with the
+ content of the original ones
+
+The code generated for a bit-field assignment loads the whole word, updates
+some bits and stores it back: the consistency check on the store compared the
+uninitialized (different) bits of the two copies of the variable, a false data
+corruption that depends on the stack contents. At the beginning of each
+hardened function the content of every local variable is copied into its
+duplicate.
+---
+ passes/ASPIS.h  |  2 ++
+ passes/EDDI.cpp | 32 ++++++++++++++++++++++++++++++++
+ 2 files changed, 34 insertions(+)
+
+diff --git a/passes/ASPIS.h b/passes/ASPIS.h
+index 123f003..1ea1314 100644
+--- a/passes/ASPIS.h
++++ b/passes/ASPIS.h
+@@ -56,6 +56,7 @@ class EDDI : public PassInfoMixin<EDDI> {
+         bool CoarseGrainedDuplicationEnabled;
+         int comparisonCounter = 0;
+         std::map<Type *, GlobalVariable *> NullGuards;
++        std::map<AllocaInst *, AllocaInst *> ClonedAllocas;
+ 
+         void preprocess(Module &Md);
+         void fixDuplicatedConstructors(Module &Md);
+@@ -86,6 +87,7 @@ class EDDI : public PassInfoMixin<EDDI> {
+         void compareValues(std::vector<Value *> *CmpInstructions, Value &V1, Value &V2, IRBuilder<> &B);
+         void fixGlobalCtors(Module &M);
+         void repairBasicBlock(BasicBlock &BB);
++        void initDuplicatedAllocas(Function &Fn);
+     public:
+         explicit EDDI(bool duplicateAll, bool MultipleErrBBEnabled = false, bool CoarseGrainedDuplicationEnabled = true, std::string entryPoint = "main") : duplicateAll(duplicateAll), MultipleErrBBEnabled(MultipleErrBBEnabled), CoarseGrainedDuplicationEnabled(CoarseGrainedDuplicationEnabled), entryPoint(entryPoint) {}
+ 
+diff --git a/passes/EDDI.cpp b/passes/EDDI.cpp
+index 867aaf8..b7e7409 100755
+--- a/passes/EDDI.cpp
++++ b/passes/EDDI.cpp
+@@ -1502,6 +1502,7 @@ int EDDI::duplicateInstruction(Instruction &I, BasicBlock &ErrBB) {
+     if (!isAllocaForExceptionHandling(cast<AllocaInst>(I))){
+       
+       clonedInst = cloneInstr(I);
++      ClonedAllocas[cast<AllocaInst>(&I)] = cast<AllocaInst>(clonedInst);
+ 
+       // In a function that is not hardened (e.g. a function that just uses a
+       // hardened global variable) the instructions are duplicated on demand,
+@@ -2001,6 +2002,8 @@ PreservedAnalyses EDDI::run(Module &Md, ModuleAnalysisManager &AM) {
+     
+     LLVM_DEBUG(dbgs() << " [done]\n");
+ 
++    initDuplicatedAllocas(*Fn);
++
+     // insert the code for calling the error basic block in case of a mismatch
+     CreateErrBB(Md, *Fn, ErrBB);
+   }
+@@ -2317,6 +2320,35 @@ void EDDI::removeTemporaryDuplicate(Value *Original, Value *Copy) {
+   }
+ }
+ 
++// The original and the duplicated copy of a local variable must hold the same
++// value even before the program writes them: the code generated for a
++// bit-field assignment (e.g. h.version = 5) loads the whole word, updates some
++// of its bits and stores it back, so the consistency check on the store would
++// compare the uninitialized, and thus different, bits of the two copies. At
++// the beginning of the function the content of each local variable is copied
++// into its duplicate.
++void EDDI::initDuplicatedAllocas(Function &Fn) {
++  const DataLayout &DL = Fn.getDataLayout();
++  BasicBlock &EntryBB = Fn.getEntryBlock();
++  std::vector<std::pair<AllocaInst *, AllocaInst *>> Pairs;
++  for (Instruction &I : EntryBB) {
++    auto *AI = dyn_cast<AllocaInst>(&I);
++    if (AI != nullptr && AI->isStaticAlloca() && ClonedAllocas.count(AI)) {
++      Pairs.push_back(std::pair(AI, ClonedAllocas[AI]));
++    }
++  }
++  IRBuilder<> B(&*EntryBB.getFirstNonPHIOrDbgOrAlloca());
++  for (auto [Original, Copy] : Pairs) {
++    std::optional<TypeSize> Size = Original->getAllocationSize(DL);
++    if (!Size || Size->isScalable() || Copy->getParent() != &EntryBB) {
++      continue;
++    }
++    Instruction *Init = B.CreateMemCpy(Copy, Copy->getAlign(), Original,
++                                       Original->getAlign(), Size->getFixedValue());
++    DuplicatedInstructionMap.insert(std::pair<Value *, Value *>(Init, Init));
++  }
++}
++
+ Instruction *getSingleReturnInst(Function &F) {
+   for (BasicBlock &BB : F) {
+     if (auto *retInst = llvm::dyn_cast<llvm::ReturnInst>(BB.getTerminator())) {
+-- 
+2.43.0
+

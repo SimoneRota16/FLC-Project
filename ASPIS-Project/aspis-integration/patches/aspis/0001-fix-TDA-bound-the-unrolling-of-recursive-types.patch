@@ -1,0 +1,26 @@
+From 9b0b32ce447ed741d5faa2e3e167140a268d4da1 Mon Sep 17 00:00:00 2001
+From: Simone Rota <simone.rota16@gmail.com>
+Date: Thu, 29 Oct 2026 23:40:55 +0000
+Subject: [PATCH 01/18] fix(TDA): bound the unrolling of recursive types
+
+Transparent types are trees, so a recursive type such as
+struct node { int key; struct node *next; } is unrolled, and every iteration
+of the fixed-point loop of the analysis can unroll it once more: on programs
+with linked lists or trees EDDI never terminated. The submodule now points to
+a version of TypeDeductionAnalysis that keeps opaque the pointers to a struct
+already on the path from the root of the type (and bounds the nesting depth).
+The patch for TypeDeductionAnalysis is in aspis-integration/patches/tda/.
+---
+ libs/TypeDeductionAnalysis | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libs/TypeDeductionAnalysis b/libs/TypeDeductionAnalysis
+index f9f6e44..ea654af 160000
+--- a/libs/TypeDeductionAnalysis
++++ b/libs/TypeDeductionAnalysis
+@@ -1 +1 @@
+-Subproject commit f9f6e4450ae8d1bf7ad398c0541cb39211eb3075
++Subproject commit ea654af91c371d8479fc2ad6e8520b1d2335ca9f
+-- 
+2.43.0
+
