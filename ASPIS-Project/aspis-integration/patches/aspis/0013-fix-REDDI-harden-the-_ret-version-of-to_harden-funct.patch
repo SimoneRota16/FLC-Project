@@ -1,7 +1,7 @@
 From d7112b649ae3e473f3ac2d48387434328bd8a837 Mon Sep 17 00:00:00 2001
 From: Simone Rota <simone.rota16@gmail.com>
 Date: Thu, 29 Oct 2026 23:50:51 +0000
-Subject: [PATCH 13/18] fix(REDDI): harden the _ret version of to_harden
+Subject: [PATCH 13/19] fix(REDDI): harden the _ret version of to_harden
  functions
 
 FuncRetToRef replaces the calls to a function returning a value with calls to

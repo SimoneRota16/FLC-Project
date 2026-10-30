@@ -1,7 +1,7 @@
 From 832f39f934d75305003d2e7c464026ca5984a619 Mon Sep 17 00:00:00 2001
 From: Simone Rota <simone.rota16@gmail.com>
 Date: Thu, 29 Oct 2026 23:51:37 +0000
-Subject: [PATCH 14/18] fix(EDDI): duplicated local variables start with the
+Subject: [PATCH 14/19] fix(EDDI): duplicated local variables start with the
  content of the original ones
 
 The code generated for a bit-field assignment loads the whole word, updates

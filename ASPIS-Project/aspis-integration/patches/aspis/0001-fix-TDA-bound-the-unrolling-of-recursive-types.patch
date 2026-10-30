@@ -1,7 +1,7 @@
 From 9b0b32ce447ed741d5faa2e3e167140a268d4da1 Mon Sep 17 00:00:00 2001
 From: Simone Rota <simone.rota16@gmail.com>
 Date: Thu, 29 Oct 2026 23:40:55 +0000
-Subject: [PATCH 01/18] fix(TDA): bound the unrolling of recursive types
+Subject: [PATCH 01/19] fix(TDA): bound the unrolling of recursive types
 
 Transparent types are trees, so a recursive type such as
 struct node { int key; struct node *next; } is unrolled, and every iteration

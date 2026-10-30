@@ -1,7 +1,7 @@
 From dac1433bee7caa10ae94794c54f1d043267cf30d Mon Sep 17 00:00:00 2001
 From: Simone Rota <simone.rota16@gmail.com>
 Date: Thu, 29 Oct 2026 23:49:22 +0000
-Subject: [PATCH 11/18] fix(EDDI): initialization check while the verification
+Subject: [PATCH 11/19] fix(EDDI): initialization check while the verification
  block is built
 
 isLocalValueInitializedBefore walks the CFG from the alloca looking for a

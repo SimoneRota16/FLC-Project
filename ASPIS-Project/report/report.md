@@ -27,10 +27,10 @@ testing. This report describes what was done for each goal:
   test harness. On the main branch of ASPIS 435 (36%) of the 1210
   hardened builds produce the right output; the others do not compile, make
   the compiler hang, crash, or report faults that never happened.
-- **22 defects found and fixed**, 21 in the passes of ASPIS and one in the
-  TypeDeductionAnalysis library it uses, organised as a series of 18 commits
+- **23 defects found and fixed**, 22 in the passes of ASPIS and one in the
+  TypeDeductionAnalysis library it uses, organised as a series of 19 commits
   ready for the main branch; the fixes come with 14 minimal reproducers of a
-  few lines of C each. With the series all the 1210 builds pass, the existing
+  few lines of C each, and the last defect was found by the fault injection. With the series all the 1210 builds pass, the existing
   ASPIS tests still pass (2453/2453), and 23 combinations that were
   blacklisted in the test suite now pass too.
 - **A fault injector** for x86-64 Linux binaries that injects register
@@ -266,15 +266,19 @@ main branch, so the fixes introduce no regression. Moreover, 23 of the
 blacklisted combinations pass after the fixes, in particular every data
 technique combined with inter-RASM on `cpp_class`, `cpp_heap` and
 `cpp_template`, which are removed from the blacklist by the last commit of the
-series.
+series. With the test configuration of the complete series (the 48 tests,
+our 22, and the reduced blacklist: 3850 builds, 154 blacklisted) all the 3696
+remaining builds pass.
 
 # 4. Bugs found and fixed in ASPIS
 
-The failures of Section 3 come from the 22 defects listed below. For each
-one we found the root cause in the passes and wrote a fix; for 14 of them we
-also isolated a minimal reproducer (`aspis-integration/reproducers/`, a few
-lines of C each). Three defects (marked *latent*) were found while reading
-the code around the others and do not affect our benchmarks. The fixes are
+The failures of Section 3 come from the first 22 defects listed below; the
+23rd does not make any build fail and was found by the fault-injection
+campaign (Section 6.2). For each one we found the root cause in the passes and
+wrote a fix; for 14 of them we also isolated a minimal reproducer
+(`aspis-integration/reproducers/`, a few lines of C each). Three defects
+(marked *latent*) were found while reading the code around the others and do
+not affect our benchmarks. The fixes are
 organised as a series of commits on top of the main branch
 (`aspis-integration/patches/`): every commit compiles on its own, has a
 message that explains the problem, and the series ends in the version used
@@ -304,6 +308,7 @@ for all the experiments of this report.
 | 20 | bit-field updates read uninitialized bits of both copies | false detection | 14 | `unions_bitfields` |
 | 21 | `setjmp`/`longjmp` leave stale signatures | false detection | 15 | `r11` |
 | 22 | inter-RASM: functions entered from non-hardened code | false detection | 16 | `r14` |
+| 23 | RASM and RACFED do not check the verification blocks of EDDI | undetected control-flow errors | 17 | fault injection |
 
 : The defects and the commits that fix them.
 
@@ -448,7 +453,7 @@ copy reported a corruption. The `_ret` version of an annotated function is
 now hardened, its calls are redirected, and the stores to a local variable
 duplicated on demand are duplicated too.
 
-## 4.6 Control-flow checking (commits 15, 16)
+## 4.6 Control-flow checking (commits 15, 16, 17)
 
 **setjmp/longjmp (`r11`).** When `longjmp` returns to a `setjmp`, the run-time
 signatures still have the values they had where `longjmp` was called, and the
@@ -466,6 +471,16 @@ Now `main` and the functions whose address is taken set the runtime signature
 to the one of their first block, and the signatures are saved and restored
 around indirect calls and calls to functions that are not compiled. This is
 what makes `cpp_class`, `cpp_heap` and `cpp_template` pass with inter-RASM.
+
+**Verification blocks of EDDI (commit 17).** RASM and RACFED reset the
+runtime signature, without checking it, in every block whose name contains
+"verification". The test was meant for the blocks the passes create
+themselves, but it also matches the `VerificationBB` blocks that EDDI creates
+for its checks, which with EDDI are the successor of most blocks: a wrong
+branch or jump into one of them re-synchronised the signature and went
+undetected. No program fails because of it, so the compatibility tests could
+not find it; the fault injection did (Section 6.2). Now only landing pads and
+the blocks created by the pass itself are exempted.
 
 ## 4.7 Other observations
 
@@ -593,7 +608,58 @@ cost.
 
 ## 6.2 Outcome of the faults
 
-{{FI_TEXT}}
+**Register bit-flips** are mostly harmless: in the unprotected programs 85.8%
+of them are masked (the register is dead or overwritten), 12.3% crash the
+program (a corrupted pointer, often the stack pointer) and 1.86% silently
+corrupt the output. Data duplication removes most of the SDCs: EDDI leaves
+0.14% (13.6 times fewer), sEDDI 0.12% and FDSC 0.42%. The checks detect only
+about 3% of the faults directly, but these are the ones that matter: a
+corrupted value is caught before it reaches a store, a call or a branch. The
+control-flow techniques alone leave between 0.70% (RASM) and 1.33%
+(inter-RASM), since only the bit-flips that derail the control flow can be
+caught by a signature. Combining EDDI with CFCSS gives the best protection
+against register faults: one SDC in 7300 faults (0.01%).
+
+**Inverted branches** are the most harmful faults for these applications:
+79.4% of them corrupt the output, because the result depends on how many
+times the loops run and on which path the data-dependent branches take.
+EDDI detects 73.9% of them and leaves 20.8% of SDCs, but the detections are
+partly an artefact of the fault model: the branches of the program are not
+duplicated (the two copies of the condition agree and the jump is taken
+once), and 75% of the conditional jumps executed by an EDDI program are those
+of its own checks, whose inversion calls the handler. RASM, inter-RASM and
+RACFED detect 99.4-99.5% of the inverted branches, because the signature
+update at the end of a block is selected by the same condition as the branch:
+a jump that disagrees with its condition lands in a block with the wrong
+signature. CFCSS, whose signatures only encode which blocks may follow each
+other, cannot tell the right successor from the wrong one and leaves 29.6% of
+SDCs. The few SDCs left by RASM and RACFED are all in `lu_solve` and
+`pid_control`, at conditional jumps that are not branches of the IR: at
+`-O0` the back-end implements a `select` between two floating-point values
+(e.g. `x < 0 ? -x : x`) with a jump, which no IR-level technique can see.
+
+**Wrong jump targets** crash 75.5% of the unprotected runs and corrupt the
+output in 19.6%. The control-flow techniques detect most of them: RACFED,
+whose updates after every instruction also catch jumps into the middle of a
+block, leaves 0.15% of SDCs, RASM 1.22%, inter-RASM 1.41%, CFCSS 2.95%. EDDI
+alone detects half of them, as a jump into the duplicated code soon makes the
+two copies disagree, and leaves 4.6%. EDDI with CFCSS leaves 0.23%.
+
+**EDDI with RASM or RACFED.** In the first run of the campaign these two
+combinations were *worse* than RASM or RACFED alone on control-flow faults:
+12.4% and 12.1% of SDCs for inverted branches (against 0.6%), 5.3% and 3.2%
+for wrong jumps (against 1.2% and 0.15%). Looking at where the undetected
+faults were injected, all the inverted branches that produced an SDC had as
+wrong target one of the verification blocks created by EDDI, where RASM and
+RACFED reset the signature instead of checking it: defect 23 of Section 4,
+fixed by commit 17. The two configurations were then rebuilt and the
+injections repeated; the figure and the tables of this section use the
+results after the fix, compared with the first run in the table below.
+{{FIX17_TEXT}}
+
+{{table:fi_before_after}}
+
+: EDDI combined with RASM and RACFED, before and after the fix of commit 17 (7,300 faults per row).
 
 ![Outcome of the faults injected in the 8 applications (7,300 per configuration and fault model). The number at the right of each bar is the share of silent data corruptions.](figures/fi_outcomes.svg)
 
@@ -607,7 +673,19 @@ cost.
 
 : SDC rate (%) of register bit-flips, per application and configuration (1000 injections each, 300 for `sobel`).
 
-{{PER_APP_TEXT}}
+The unprotected applications have similar SDC rates for register faults
+(between 1.1% for `bst_dict` and 2.9% for `expr_vm`). EDDI and sEDDI bring
+all of them to 0.3% or less, with one exception in `sobel` (3 SDCs out of 300
+faults for EDDI; with 300 faults the intervals are wide). FDSC follows EDDI
+except on `aes128` (1.7% against 0.2%): the rounds of AES are long
+straight-line sequences of table look-ups and stores, and FDSC checks only at
+a subset of the synchronisation points, so a corrupted byte can be stored and
+propagate without passing through a check. The control-flow techniques alone
+do not reduce register SDCs in a consistent way: inter-RASM on `fft` even
+shows more of them than the unprotected build (3.0% against 1.3%), an effect
+we did not investigate further. The per-application tables of the other
+fault models are in `results/fault_injection/` (generated as
+`report/tables/fi_sdc_branch.md` and `fi_sdc_jump.md`).
 
 ## 6.4 Cost-effectiveness
 
@@ -624,12 +702,12 @@ cost.
 `ASPIS-Project/aspis-integration/` contains what is needed to merge the work
 into the main branch:
 
-- `patches/aspis/`: the 18 commits, produced with `git format-patch` against
-  `b66a090`. Commits 1-16 are the fixes of Section 4 (one per problem, each
-  compiling on its own, the reproducer named in the message); commit 17 adds
+- `patches/aspis/`: the 19 commits, produced with `git format-patch` against
+  `b66a090`. Commits 1-17 are the fixes of Section 4 (one per problem, each
+  compiling on its own, the reproducer named in the message); commit 18 adds
   the 22 benchmarks to `testing/tests/c/applications/` and
   `testing/tests/c/language_features/` and their entries to
-  `testing/config/tests.toml`; commit 18 removes inter-RASM from the
+  `testing/config/tests.toml`; commit 19 removes inter-RASM from the
   blacklist of `cpp_class`, `cpp_heap` and `cpp_template`;
 - `patches/tda/`: the fix of TypeDeductionAnalysis, to be merged in its
   repository before the first ASPIS commit, which moves the submodule
@@ -718,7 +796,7 @@ python3 report/build.py
 
 `--tests-root` points to a directory with the layout of `testing/tests/`
 (`c/applications/`, `c/language_features/`), e.g. the `testing/tests` of an
-ASPIS checkout with commit 17 applied. The campaign of Section 5 took about
+ASPIS checkout with commit 18 applied. The campaign of Section 5 took about
 N hours on a 4-core virtual machine; it can be interrupted and resumed, and
 `injections` in `campaign.toml` can be lowered for a quicker run.
 

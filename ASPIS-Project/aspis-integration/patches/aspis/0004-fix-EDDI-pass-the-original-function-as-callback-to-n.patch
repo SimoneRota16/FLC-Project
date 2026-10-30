@@ -1,7 +1,7 @@
 From 21e929ffaa06297d3052e8d552074ff070084f21 Mon Sep 17 00:00:00 2001
 From: Simone Rota <simone.rota16@gmail.com>
 Date: Thu, 29 Oct 2026 23:44:11 +0000
-Subject: [PATCH 04/18] fix(EDDI): pass the original function as callback to
+Subject: [PATCH 04/19] fix(EDDI): pass the original function as callback to
  non-duplicated functions
 
 A function passed as argument (e.g. the comparator of qsort/bsearch, an

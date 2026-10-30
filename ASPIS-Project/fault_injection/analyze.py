@@ -169,7 +169,7 @@ def table_outcomes(agg, out):
     lines = []
     for model, title in MODELS:
         lines.append("**%s**\n" % title)
-        lines.append("| configuration | n | masked | detected (data) | detected (CFC) | crash | hang | SDC [95%% CI] |")
+        lines.append("| configuration | n | masked | detected (data) | detected (CFC) | crash | hang | SDC [95% CI] |")
         lines.append("|---|---:|---:|---:|---:|---:|---:|---:|")
         for conf in CONFIGS:
             c = agg[(conf, model)]
@@ -276,6 +276,19 @@ def table_mwtf(agg, ovh, benches, out):
     write(out, "mwtf", "\n".join(lines) + "\n")
 
 
+def table_before_after(before, after, out, confs=("EDDI+RASM", "EDDI+RACFED")):
+    """SDC and detection rates of the configurations changed by a fix."""
+    lines = ["| configuration | fault model | SDC before | SDC after | detected (CFC) before | detected (CFC) after |",
+             "|---|---|---:|---:|---:|---:|"]
+    for conf in confs:
+        for model, title in MODELS:
+            b, a = before[(conf, model)], after[(conf, model)]
+            lines.append("| %s | %s | %s%% | %s%% | %s%% | %s%% |" % (
+                conf, title, pct(b["sdc"] / b["n"], 2), pct(a["sdc"] / a["n"], 2),
+                pct(b["detected_cfc"] / b["n"]), pct(a["detected_cfc"] / a["n"])))
+    write(out, "fi_before_after", "\n".join(lines) + "\n")
+
+
 def fig_tradeoff(agg, ovh, benches, out):
     fig, ax = plt.subplots(figsize=(6.4, 4.4))
     base = agg[("baseline", "reg")]
@@ -376,6 +389,8 @@ def main():
     ap.add_argument("--campaign", default=None)
     ap.add_argument("--matrix", action="append", default=[], help="name=<dir with matrix.csv>")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--before", default=None,
+                    help="outcomes of the same campaign before a fix, to compare EDDI+RASM and EDDI+RACFED")
     args = ap.parse_args()
     for theme in ("light", "dark"):
         set_theme(theme)
@@ -398,6 +413,9 @@ def main():
                     table_sdc_per_benchmark(outcomes, benches, args.out, model)
                 table_overhead(ovh, metrics, benches, args.out)
                 table_mwtf(agg, ovh, benches, args.out)
+                if args.before:
+                    before = aggregate(read_csv(os.path.join(args.before, "outcomes.csv")))
+                    table_before_after(before, agg, args.out)
         if args.matrix:
             compat([m.split("=", 1) for m in args.matrix], args.out)
 

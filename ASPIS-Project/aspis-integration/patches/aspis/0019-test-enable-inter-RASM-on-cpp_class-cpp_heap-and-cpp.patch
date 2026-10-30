@@ -1,7 +1,7 @@
-From bdc14c727b633658ffc73b41a4f374e852d2c2d0 Mon Sep 17 00:00:00 2001
+From 1d45e9dbd7fd27e10b69ae0894bb3bc6c1a791a7 Mon Sep 17 00:00:00 2001
 From: Simone Rota <simone.rota16@gmail.com>
 Date: Thu, 29 Oct 2026 23:53:54 +0000
-Subject: [PATCH 18/18] test: enable inter-RASM on cpp_class, cpp_heap and
+Subject: [PATCH 19/19] test: enable inter-RASM on cpp_class, cpp_heap and
  cpp_template
 
 With the support for functions entered from non-hardened code these tests

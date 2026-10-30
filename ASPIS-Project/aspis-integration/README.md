@@ -5,7 +5,7 @@ into the ASPIS main branch (`HEAPLab/ASPIS`, base commit `b66a090`).
 
 | Path | Content |
 |---|---|
-| `patches/aspis/` | 18 commits for ASPIS (`git format-patch`): 16 fixes/features of the passes and 2 commits for the regression tests |
+| `patches/aspis/` | 19 commits for ASPIS (`git format-patch`): 17 fixes/features of the passes and 2 commits for the regression tests |
 | `patches/tda/` | 1 commit for the `TypeDeductionAnalysis` submodule (`NiccoloN/TypeDeductionAnalysis`, base `f9f6e44`) |
 | `flc_tests.toml` | the `[[tests]]` entries of the 22 benchmarks, in the format of `testing/config/tests.toml` |
 | `reproducers/` | a minimal C program for each bug, and `run.py` to build them with several ASPIS checkouts |
@@ -33,12 +33,16 @@ ends exactly in the version of ASPIS used for the fault-injection campaign.
 | 14 | fix(EDDI): duplicated local variables start with the content of the original ones | (`c_unions_bitfields`) |
 | 15 | feat(CFC): support setjmp/longjmp in CFCSS, RASM, inter-RASM and RACFED | `r11` |
 | 16 | feat(inter-RASM): functions entered from non-hardened code | `r14` |
-| 17 | test: add the benchmarks of the FLC 2026/27 project | |
-| 18 | test: enable inter-RASM on cpp_class, cpp_heap and cpp_template | |
+| 17 | fix(RASM, RACFED): check the signature in the verification blocks of EDDI | (fault injection) |
+| 18 | test: add the benchmarks of the FLC 2026/27 project | |
+| 19 | test: enable inter-RASM on cpp_class, cpp_heap and cpp_template | |
 
 Two of the bugs (11 and 14) depend on the order in which EDDI visits the
 instructions or on the content of the stack, so they have no reliable
-minimal reproducer: the benchmark in parentheses exposes them.
+minimal reproducer: the benchmark in parentheses exposes them. Commit 17
+makes no program fail: it was found by the fault-injection campaign, where
+EDDI combined with RASM or RACFED missed wrong branches into the
+verification blocks of EDDI.
 
 ## How to apply
 
@@ -62,7 +66,7 @@ git am patches/aspis/000[2-9]-*.patch patches/aspis/001*.patch
 
 ## Regression tests
 
-Commit 17 copies the benchmarks into `testing/tests/c/applications/` and
+Commit 18 copies the benchmarks into `testing/tests/c/applications/` and
 `testing/tests/c/language_features/` and appends `flc_tests.toml` to
 `testing/config/tests.toml`. The official harness runs each of them with the
 55 combinations of data protection and control-flow checking:
@@ -83,6 +87,7 @@ Results with LLVM 21.1.8 (see the report for the details):
 | FLC benchmarks, 22 x 55 builds | 435 pass (36%); EDDI, sEDDI and FDSC: 0 / 660 | 1210 pass (100%) |
 | ASPIS tests, 2640 builds (187 blacklisted) | 2453 pass | 2453 pass |
 | ASPIS blacklisted combinations, inter-RASM/RACFED | 81 pass | 104 pass (cpp_class, cpp_heap, cpp_template fully pass with inter-RASM) |
+| `tests.toml` of the series: 70 tests, 3850 builds (154 blacklisted) | | 3696 pass |
 
 ## Reproducers
 

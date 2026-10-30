@@ -1,7 +1,7 @@
 From 2f86f5210188e170ae582993a3827167db9cf8d0 Mon Sep 17 00:00:00 2001
 From: Simone Rota <simone.rota16@gmail.com>
 Date: Thu, 29 Oct 2026 23:53:07 +0000
-Subject: [PATCH 16/18] feat(inter-RASM): functions entered from non-hardened
+Subject: [PATCH 16/19] feat(inter-RASM): functions entered from non-hardened
  code
 
 With inter-function RASM the caller sets the signatures of the callee before

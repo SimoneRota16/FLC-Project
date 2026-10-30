@@ -1,7 +1,7 @@
 From 5c6b53fd96a5da4128a02ee977f3d86c8d830299 Mon Sep 17 00:00:00 2001
 From: Simone Rota <simone.rota16@gmail.com>
 Date: Thu, 29 Oct 2026 23:46:24 +0000
-Subject: [PATCH 07/18] fix(EDDI): duplicated memmove on shared memory
+Subject: [PATCH 07/19] fix(EDDI): duplicated memmove on shared memory
 
 Intrinsics are always duplicated. When the destination of a memmove is not
 duplicated (e.g. a heap buffer), the two copies of the call shift the data

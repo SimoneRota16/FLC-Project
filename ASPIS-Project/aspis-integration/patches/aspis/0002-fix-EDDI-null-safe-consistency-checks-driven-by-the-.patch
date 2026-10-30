@@ -1,7 +1,7 @@
 From f8ec381f0242d32753b0a6cd5be350e1b8c51b18 Mon Sep 17 00:00:00 2001
 From: Simone Rota <simone.rota16@gmail.com>
 Date: Thu, 29 Oct 2026 23:42:42 +0000
-Subject: [PATCH 02/18] fix(EDDI): null-safe consistency checks driven by the
+Subject: [PATCH 02/19] fix(EDDI): null-safe consistency checks driven by the
  LLVM type of the values
 
 The consistency checks on pointers compare the pointed values, but

@@ -16,7 +16,7 @@ for regression testing. **The report is in [`report/report.pdf`](report/report.p
 |---|---|
 | `benchmarks/applications/` | 8 self-checking applications: AES-128, binary search tree, expression compiler + VM, FFT, Huffman coding, LU solver, PID controller, Sobel filter |
 | `benchmarks/features/` | 14 microbenchmarks, each stressing a feature of C (callbacks, varargs, structs by value, VLAs, setjmp/longjmp, bit-fields, ...) |
-| `aspis-integration/` | the fixes for ASPIS as a series of 18 commits (`patches/`), the test entries for `testing/config/tests.toml`, one minimal reproducer per bug |
+| `aspis-integration/` | the fixes for ASPIS as a series of 19 commits (`patches/`), the test entries for `testing/config/tests.toml`, one minimal reproducer per bug |
 | `fault_injection/injector/fi.c` | ptrace-based fault injector for x86-64 Linux (register bit-flips, inverted branches, wrong jump targets) |
 | `fault_injection/campaign.py`, `campaign.toml` | the fault-injection campaign (build, profile, measure, inject, aggregate) |
 | `fault_injection/analyze.py` | tables and figures of the report |
@@ -44,7 +44,7 @@ cmake -B build -G Ninja -DLLVM_DIR=<llvm>/lib/cmake/llvm && cmake --build build
 ```
 
 ```bash
-# compatibility matrix of the 22 benchmarks (tests copied into ASPIS by commit 17)
+# compatibility matrix of the 22 benchmarks (tests copied into ASPIS by commit 18)
 python3 scripts/aspis_matrix.py --aspis <ASPIS> --llvm-bin <llvm>/bin \
     --tests aspis-integration/flc_tests.toml --out matrix
 ```

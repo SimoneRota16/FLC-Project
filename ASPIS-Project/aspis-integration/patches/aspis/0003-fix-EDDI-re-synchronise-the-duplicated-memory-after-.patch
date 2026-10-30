@@ -1,7 +1,7 @@
 From f69246c7dc1043e027514d9f1bc5b20129837eb0 Mon Sep 17 00:00:00 2001
 From: Simone Rota <simone.rota16@gmail.com>
 Date: Thu, 29 Oct 2026 23:43:27 +0000
-Subject: [PATCH 03/18] fix(EDDI): re-synchronise the duplicated memory after
+Subject: [PATCH 03/19] fix(EDDI): re-synchronise the duplicated memory after
  calls to non-duplicated functions
 
 After a call to a function without a _dup version (e.g. printf), the

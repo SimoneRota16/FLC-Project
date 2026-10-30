@@ -16,6 +16,7 @@ Output of `../scripts/aspis_matrix.py`: one row per build, with the outcome
 | `flc_patched.csv` (`.md`: matrix view) | the 22 benchmarks | patched |
 | `aspis_tests_master.csv` | the 48 tests of `testing/config/tests.toml` | master |
 | `aspis_tests_patched.csv` | the 48 tests | patched |
+| `aspis_suite_with_series.csv` | the 70 tests of `testing/config/tests.toml` after the series (48 + 22, reduced blacklist) | patched |
 | `aspis_blacklisted_*.csv` | the tests with a `black_list`, only `--inter-rasm` and `--racfed`, blacklist ignored | master / patched |
 | `reproducers.md` | `../aspis-integration/reproducers/run.py` | both |
 

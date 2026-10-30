@@ -1,7 +1,7 @@
 From f005c9c06c22ce6646ee8cc3e7b4259eee495605 Mon Sep 17 00:00:00 2001
 From: Simone Rota <simone.rota16@gmail.com>
 Date: Thu, 29 Oct 2026 23:44:56 +0000
-Subject: [PATCH 05/18] fix(EDDI): the duplicate of a global refers to the
+Subject: [PATCH 05/19] fix(EDDI): the duplicate of a global refers to the
  duplicated globals
 
 The initializer of the duplicate of a global was the same as the original

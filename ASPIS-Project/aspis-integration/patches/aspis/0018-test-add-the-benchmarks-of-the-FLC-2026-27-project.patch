@@ -1,7 +1,7 @@
-From 948d36feeba006dadbc51a936e00603158227e76 Mon Sep 17 00:00:00 2001
+From c7440fa9635ab5da3c8971e3182f999eb4bf7b68 Mon Sep 17 00:00:00 2001
 From: Simone Rota <simone.rota16@gmail.com>
 Date: Thu, 29 Oct 2026 23:53:49 +0000
-Subject: [PATCH 17/18] test: add the benchmarks of the FLC 2026/27 project
+Subject: [PATCH 18/19] test: add the benchmarks of the FLC 2026/27 project
 
 Eight self-checking applications (AES-128, binary search tree, expression
 compiler and VM, FFT, Huffman coding, LU solver, PID controller, Sobel filter)

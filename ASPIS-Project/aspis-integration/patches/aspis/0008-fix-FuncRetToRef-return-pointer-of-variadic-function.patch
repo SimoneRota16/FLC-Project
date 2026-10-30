@@ -1,7 +1,7 @@
 From 4872dbcdbc8b037ea9764d926825e1f2db41894e Mon Sep 17 00:00:00 2001
 From: Simone Rota <simone.rota16@gmail.com>
 Date: Thu, 29 Oct 2026 23:47:09 +0000
-Subject: [PATCH 08/18] fix(FuncRetToRef): return pointer of variadic functions
+Subject: [PATCH 08/19] fix(FuncRetToRef): return pointer of variadic functions
 
 The return pointer is the last fixed parameter of the _ret function, but at
 the call sites it was appended after the variadic arguments: the module was
