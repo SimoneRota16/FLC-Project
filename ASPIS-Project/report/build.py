@@ -12,10 +12,17 @@ import argparse
 import base64
 import os
 import re
+import struct
 import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# pandoc gives a pipe table relative column widths (from the dashes of its
+# separator line) when a row is longer than --columns: with a large value the
+# browser sizes the columns to their content instead
+PANDOC_COLUMNS = 10000
+# tables with more rows than this may be split across pages in the PDF
+LONG_TABLE_ROWS = 15
 
 PDF_JS = r"""
 const { chromium } = require('playwright');
@@ -116,13 +123,16 @@ pre { font-family: var(--mono); font-size: 0.8rem; line-height: 1.45; background
 pre code { background: none; padding: 0; font-size: inherit; }
 .table-wrap { overflow-x: auto; margin: 1.2rem 0 0.4rem; }
 table { border-collapse: collapse; font-family: var(--sans); font-size: 0.8rem; line-height: 1.35; min-width: 100%; font-variant-numeric: tabular-nums; }
-caption { caption-side: bottom; text-align: left; font-size: 0.78rem; color: var(--fg-2); padding-top: 0.5rem; }
+.table-caption { font-family: var(--sans); font-size: 0.78rem; line-height: 1.45; color: var(--fg-2); margin: 0.5rem 0 1.4rem; }
 thead th { text-align: left; font-weight: 600; color: var(--fg-2); border-bottom: 1px solid var(--muted); white-space: nowrap; }
 th, td { padding: 0.35rem 0.6rem; vertical-align: top; }
+td[style*="right"] { white-space: nowrap; }
 tbody tr { border-bottom: 1px solid var(--rule); }
 tbody tr:nth-child(even) { background: var(--row); }
 figure { margin: 1.8rem 0; }
 figure img { width: 100%; height: auto; border-radius: 4px; }
+.fig-scroll { overflow-x: auto; }
+.fig-scroll.wide img { min-width: 640px; }
 img.fig-light { display: var(--fig-light); }
 img.fig-dark { display: var(--fig-dark); }
 figcaption { font-family: var(--sans); font-size: 0.78rem; color: var(--fg-2); margin-top: 0.5rem; }
@@ -139,7 +149,7 @@ def web_page(md_path, out_path):
     try:
         body = subprocess.run(["pandoc", md_path, "--from",
                                "markdown+pipe_tables+table_captions+implicit_figures", "--to", "html5",
-                               "--standalone", "--template", tpl, "--toc", "--toc-depth=2",
+                               "--columns", str(PANDOC_COLUMNS), "--standalone", "--template", tpl, "--toc", "--toc-depth=2",
                                "--no-highlight", "--metadata", "pagetitle=Hardening C applications with ASPIS"],
                               check=True, capture_output=True, text=True, cwd=HERE).stdout
     finally:
@@ -151,12 +161,37 @@ def web_page(md_path, out_path):
 
     def figure(m):
         name, rest = m.group(1), m.group(2)
-        return ('<img class="fig-light" src="%s"%s<img class="fig-dark" src="%s" alt="" />'
-                % (data_uri(name), rest, data_uri(name + "_dark")))
+        with open(os.path.join(HERE, "figures", name + ".png"), "rb") as f:
+            width, height = struct.unpack(">II", f.read(24)[16:24])
+        # on a phone the figures with several panels scroll instead of shrinking
+        wide = " wide" if width > 1.8 * height else ""
+        return ('<div class="fig-scroll%s"><img class="fig-light" src="%s"%s<img class="fig-dark" src="%s" alt="" />'
+                '</div>' % (wide, data_uri(name), rest, data_uri(name + "_dark")))
     body = re.sub(r'<img src="figures/([a-z_0-9]+)\.svg"([^>]*>)', figure, body)
-    body = body.replace("<table", '<div class="table-wrap"><table').replace("</table>", "</table></div>")
+
+    def table(m):
+        # the caption goes below the scrolling box, so that it wraps to the width of the page
+        html = m.group(0)
+        cap = re.search(r"<caption>(.*?)</caption>\s*", html, flags=re.S)
+        if cap:
+            html = html.replace(cap.group(0), "", 1)
+        return '<div class="table-wrap">%s</div>%s' % (
+            html, '<p class="table-caption">%s</p>' % cap.group(1) if cap else "")
+    body = re.sub(r"<table>.*?</table>", table, body, flags=re.S)
     with open(out_path, "w") as f:
         f.write(body)
+
+
+def mark_long_tables(path):
+    """class="long" on the tables that the print style lets break across pages."""
+    with open(path) as f:
+        html = f.read()
+
+    def mark(m):
+        rows = m.group(0).count("<tr")
+        return m.group(0).replace("<table>", '<table class="long">', 1) if rows > LONG_TABLE_ROWS else m.group(0)
+    with open(path, "w") as f:
+        f.write(re.sub(r"<table>.*?</table>", mark, html, flags=re.S))
 
 
 def expand(text):
@@ -182,9 +217,10 @@ def main():
         f.write(src)
     html = os.path.join(HERE, "report.html")
     common = ["pandoc", full, "--from", "markdown+pipe_tables+table_captions+implicit_figures",
-              "--to", "html5", "--standalone", "--toc", "--toc-depth=2", "--css", "style.css",
+              "--to", "html5", "--columns", str(PANDOC_COLUMNS), "--standalone", "--toc", "--toc-depth=2", "--css", "style.css",
               "--metadata", "lang=en", "--resource-path", HERE]
     subprocess.run(common + ["-o", html], check=True, cwd=HERE)
+    mark_long_tables(html)
     # self-contained copy (figures and style inlined), e.g. to publish it
     subprocess.run(common + ["--embed-resources", "-o", os.path.join(HERE, "report.standalone.html")],
                    check=True, cwd=HERE)

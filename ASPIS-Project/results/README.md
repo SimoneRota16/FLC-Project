@@ -37,3 +37,8 @@ Output of `../fault_injection/campaign.py` (exported with `export.py`):
   `model`, `pc_off` offset of the target instruction in the text segment,
   `occurrence`, `target` register / condition code / jump target, `bit`,
   `injected`, `outcome`, `exit` status, `signal`, `time_us`).
+- `before_fix17/`: the first run of the campaign, before commit 17 of the
+  series (RASM and RACFED did not check the verification blocks of EDDI):
+  `metrics.csv` and `outcomes.csv` for all the configurations, of which only
+  EDDI+RASM and EDDI+RACFED differ from the final run, and `raw.csv.gz` with
+  the 43,800 experiments of these two (compared in Section 6.2 of the report).

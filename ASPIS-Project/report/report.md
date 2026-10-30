@@ -41,7 +41,16 @@ testing. This report describes what was done for each goal:
   how much each technique reduces the
   silent data corruptions, at which cost.
 
-{{FI_SUMMARY}}
+The campaign shows that EDDI reduces the silent data corruptions caused by
+register bit-flips by a factor of 13.6 (from 1.86% to 0.14% of the faults) at
+3.8 times the executed instructions, and that EDDI with CFCSS leaves one SDC
+in 7300 register faults. Data duplication cannot see a branch taken the wrong
+way, while the signature-based RASM, inter-RASM and RACFED detect 99.4% of
+the inverted branches. The campaign also revealed one more defect: RASM and
+RACFED did not check the blocks created by EDDI, so EDDI combined with them
+was *less* effective against control-flow faults than RASM or RACFED alone
+(12% of SDCs for inverted branches instead of 0.6%). With the fix these
+combinations leave no SDC for inverted branches.
 
 All the code, the raw results and the scripts that produce every table and
 figure of this report are in the repository (`ASPIS-Project/`, see
@@ -536,19 +545,20 @@ simple way (an `int3` at the address, and at every hit: restore, single-step,
 re-insert) costs two `ptrace` stops per hit, and the hot instructions of the
 benchmarks run tens of thousands of times. The injector programs instead a
 hardware execution breakpoint with `perf_event_open`
-(`PERF_TYPE_BREAKPOINT`, `sample_period = k`, `sigtrap = 1`): the
-processor counts the executions and the kernel sends a synchronous `SIGTRAP`
-only at the *k*-th one, before it executes. In the virtual machine used for
+(`PERF_TYPE_BREAKPOINT`, `sample_period = k`, `sigtrap = 1`): the hits are
+counted by the kernel without stopping the program, and only the *k*-th one
+sends a synchronous `SIGTRAP`, before the instruction executes. In the virtual machine used for
 the campaign this is 2.4 times faster than the software method (90 ms
 against 220 ms per experiment on `aes128`), with identical results for the
 same seed; the software method remains as a fallback.
 
-Each experiment is classified, in this order of precedence, as:
-*detected (data)* or *detected (CFC)* if the corresponding handler reported
-the fault; *hang* if the program did not end within 20 times its normal run
-time (at least 300 ms); *crash* if it was killed by a signal; *masked* if its
-output and exit status are the ones of the golden run; *SDC* otherwise (this
-includes a wrong output and the program's own self-check printing `FAIL`).
+Each experiment is classified, in this order, as: *hang* if the program did
+not end within 20 times its normal run time (at least 300 ms); *crash* if it
+was killed by a signal; *detected (data)* or *detected (CFC)* if the
+corresponding handler reported the fault (the handlers then exit); *masked*
+if its output and exit status are the ones of the golden run; *SDC*
+otherwise, which includes a wrong output and the program's own self-check
+printing `FAIL`.
 
 ## 5.3 The campaign
 
@@ -564,8 +574,7 @@ annotations rather than on the technique. For each application,
 configuration and fault model we injected 1000 faults (300 for `sobel`, whose
 hot loops make each experiment about ten times slower than for the others),
 in chunks of 100 with seeds derived from the names (SHA-256), for a total of
-**240,900
-experiments**. Proportions are given with 95% Wilson score intervals.
+**240,900 experiments**. Proportions are given with 95% Wilson score intervals.
 
 # 6. Results
 
@@ -587,8 +596,8 @@ The control-flow techniques cost less but differ a lot: CFCSS 1.7x, RASM
 2.5x, inter-RASM 4.1x (it also splits the blocks at the calls and, with our
 fixes, saves and restores the signatures around calls to external functions)
 and RACFED 7.2x, since it updates the signature after every instruction.
-Combined with EDDI the costs roughly add up: 5.6x with CFCSS, 5.5x with RASM
-and 16.9x with RACFED, whose binaries are 60 times larger than the
+Combined with EDDI the costs roughly add up: 5.6x with CFCSS, 6.2x with RASM
+and 17.9x with RACFED, whose binaries are 62 times larger than the
 unprotected ones.
 
 The fixes of Section 4 do not change these costs: on the six applications
@@ -655,7 +664,14 @@ RACFED reset the signature instead of checking it: defect 23 of Section 4,
 fixed by commit 17. The two configurations were then rebuilt and the
 injections repeated; the figure and the tables of this section use the
 results after the fix, compared with the first run in the table below.
-{{FIX17_TEXT}}
+After the fix the two combinations leave no SDC among the 7300 inverted
+branches (12.4% and 12.1% before), and 1.70% and 0.10% of the wrong jumps
+(5.25% and 3.18% before). The two families now cover each other: the
+signatures catch the branches taken the wrong way, which EDDI cannot see, and
+the duplicated computation catches the wrong values chosen by the jumps of the
+floating-point `select`s, which the signatures cannot see. The price is a
+slightly higher cost, since the verification blocks are now checked: 6.2 and
+17.9 times the executed instructions of the baseline (5.5 and 16.9 before).
 
 {{table:fi_before_after}}
 
@@ -663,9 +679,17 @@ results after the fix, compared with the first run in the table below.
 
 ![Outcome of the faults injected in the 8 applications (7,300 per configuration and fault model). The number at the right of each bar is the share of silent data corruptions.](figures/fi_outcomes.svg)
 
-{{table:fi_outcomes}}
+{{table:fi_outcomes_reg}}
 
-: Outcomes of the injections (%), pooled over the 8 applications (7,300 per configuration and fault model), with the 95% Wilson interval of the SDC rate.
+: Register bit-flips: outcome of the injections (% of n faults, pooled over the 8 applications), with the 95% Wilson interval of the SDC rate.
+
+{{table:fi_outcomes_branch}}
+
+: Inverted branches: outcome of the injections (% of n faults, pooled over the 8 applications).
+
+{{table:fi_outcomes_jump}}
+
+: Wrong jump targets: outcome of the injections (% of n faults, pooled over the 8 applications).
 
 ## 6.3 Per application
 
@@ -689,11 +713,30 @@ fault models are in `results/fault_injection/` (generated as
 
 ## 6.4 Cost-effectiveness
 
-{{MWTF_TEXT}}
+The SDC rate per injected fault does not tell the whole story: a hardened
+program runs longer, so it is hit by proportionally more faults. If faults
+arrive uniformly in time, the probability that a run ends with an SDC is
+proportional to the SDC rate multiplied by the executed instructions, and its
+inverse, the *mean work to failure* (MWTF), measures the improvement in
+reliability for the same amount of work.
+
+For register faults sEDDI has the best ratio among the single techniques
+(4.8x): it removes as many SDCs as EDDI (3.6x) with fewer checks, while FDSC
+gains only 1.5x. EDDI with CFCSS reaches 24x. The control-flow techniques
+alone barely help against register faults (1.1x for RASM, 1.2x for CFCSS),
+and inter-RASM and RACFED even lower the MWTF (0.3x and 0.2x): they cost more
+than they protect. For control-flow faults the ranking is reversed: RASM
+improves the MWTF by 52x for inverted branches and 6.5x for wrong jumps,
+inter-RASM by 40x and 3.4x, RACFED by 19x and 18x, CFCSS by only 1.6x and
+3.9x, while the data techniques stay around 1x. With the fix, EDDI with
+RACFED removes 205 times the SDCs of wrong jumps (11.5x MWTF) and the
+combinations of EDDI with RASM or RACFED leave no SDC for inverted branches;
+EDDI with CFCSS remains the best compromise when all three fault models
+matter (24x, 1.5x and 15x).
 
 {{table:mwtf}}
 
-: Reduction of the SDC rate with respect to the baseline, and gain in mean work to failure (MWTF), which also accounts for the longer exposure of the hardened program to faults (SDC rate times executed instructions).
+: Each cell: reduction of the SDC rate with respect to the baseline / gain in mean work to failure (MWTF), which also accounts for the longer exposure of the hardened program to faults (SDC rate times executed instructions).
 
 ![SDC rate of register bit-flips against the executed instructions, per configuration.](figures/tradeoff.svg)
 
@@ -734,6 +777,13 @@ few minutes to a run.
   a pointer it cannot trace to an object of known size, it copies only the
   size of the deduced type: a buffer filled through a `char *` parameter is
   synchronised partially (a false detection is possible, never a crash).
+- The control-flow techniques work on the IR, so they cannot see the
+  conditional jumps created by the back-end, such as those that implement a
+  `select` between floating-point values at `-O0`: these are the only
+  inverted branches left undetected by RASM and RACFED (Section 6.2), and only
+  data duplication catches them.
+- `sobel` received 300 faults per configuration and fault model instead of
+  1000, so its per-application results have wider intervals.
 - Pointed aggregates are not compared, as on the main branch (where the
   comparison was emitted but had no effect); comparing scalar fields that are
   known to be initialised would increase the coverage of the checks.
@@ -796,9 +846,11 @@ python3 report/build.py
 
 `--tests-root` points to a directory with the layout of `testing/tests/`
 (`c/applications/`, `c/language_features/`), e.g. the `testing/tests` of an
-ASPIS checkout with commit 18 applied. The campaign of Section 5 took about
-N hours on a 4-core virtual machine; it can be interrupted and resumed, and
-`injections` in `campaign.toml` can be lowered for a quicker run.
+ASPIS checkout with commit 18 applied. The campaign of Section 5 takes
+about 2.5 hours on a 4-core virtual machine, most of it for `sobel` (the
+profile of its EDDI+RACFED build alone, 79 million single steps, takes 40
+minutes); it can be interrupted and resumed, and `injections` in
+`campaign.toml` can be lowered for a quicker run.
 
 # References
 

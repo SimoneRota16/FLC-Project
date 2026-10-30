@@ -10,7 +10,7 @@
 }
 html { background: var(--surface); }
 body {
-  font-family: "Bitstream Charter", "Charter", "Liberation Serif", serif;
+  font-family: "Charter", "Bitstream Charter", "Caladea", "Liberation Serif", serif;
   font-size: 11pt;
   line-height: 1.45;
   color: var(--ink);
@@ -48,10 +48,14 @@ table {
   line-height: 1.3;
   margin: 1em 0 0.4em;
   width: 100%;
-  font-variant-numeric: tabular-nums;
+  hyphens: manual;
+  /* no contextual alternates: Inter would turn the x of "3.6x" into a multiplication sign */
+  font-feature-settings: "calt" 0;
 }
 thead th { text-align: left; font-weight: 600; color: var(--ink-2); border-bottom: 1px solid var(--muted); }
 th, td { padding: 0.32em 0.5em; vertical-align: top; }
+/* tabular digits only in the numeric columns: Inter also widens the hyphen with them */
+td[style*="right"] { white-space: nowrap; font-variant-numeric: tabular-nums; }
 tbody tr { border-bottom: 1px solid var(--rule); }
 td code { font-size: 0.95em; }
 table caption, .table-caption {
@@ -75,10 +79,14 @@ blockquote { border-left: 3px solid var(--rule); margin: 0.8em 0; padding: 0.1em
 @media print {
   html, body { background: #ffffff; }
   body { max-width: none; padding: 0; font-size: 10.5pt; }
-  h1 { break-before: page; }
-  header + nav#TOC + h1, header + h1 { break-before: auto; }
-  h1, h2, h3 { break-after: avoid; }
-  table, figure, pre { break-inside: avoid; }
   nav#TOC { break-after: page; }
+  h1 { margin-top: 2em; }
+  h1, h2, h3 { break-after: avoid; }
+  figure, pre, tr { break-inside: avoid; }
+  /* long tables may continue on the next page (with their header), short ones may not */
+  table:not(.long) { break-inside: avoid; }
+  thead { display: table-header-group; }
   a { color: var(--ink); }
+  /* pandoc's print style indents the lines of highlighted code by 5em */
+  pre > code.sourceCode > span { text-indent: 0; padding-left: 0; }
 }

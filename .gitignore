@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 compiled_*_functions.csv
+# self-contained copies of the report written by report/build.py
+ASPIS-Project/report/report.standalone.html
+ASPIS-Project/report/report.web.html

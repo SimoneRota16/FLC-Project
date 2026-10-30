@@ -166,20 +166,18 @@ def fig_outcomes(agg, benches, out):
 
 
 def table_outcomes(agg, out):
-    lines = []
-    for model, title in MODELS:
-        lines.append("**%s**\n" % title)
-        lines.append("| configuration | n | masked | detected (data) | detected (CFC) | crash | hang | SDC [95% CI] |")
-        lines.append("|---|---:|---:|---:|---:|---:|---:|---:|")
+    """One table per fault model (fi_outcomes_<model>), percentages of n."""
+    for model, _ in MODELS:
+        lines = ["| configuration | n | masked | detected (data) | detected (CFC) | crash | hang | SDC | SDC 95% CI |",
+                 "|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
         for conf in CONFIGS:
             c = agg[(conf, model)]
             n = c["n"]
             lo, hi = wilson(c["sdc"], n)
-            lines.append("| %s | %d | %s | %s | %s | %s | %s | %s [%s, %s] |" % (
+            lines.append("| %s | %d | %s | %s | %s | %s | %s | %s | %s\u2013%s |" % (
                 conf, n, pct(c["masked"] / n), pct(c["detected_data"] / n), pct(c["detected_cfc"] / n),
                 pct(c["crash"] / n), pct(c["hang"] / n), pct(c["sdc"] / n, 2), pct(lo, 2), pct(hi, 2)))
-        lines.append("")
-    write(out, "fi_outcomes", "\n".join(lines))
+        write(out, "fi_outcomes_%s" % model, "\n".join(lines) + "\n")
 
 
 def table_sdc_per_benchmark(outcomes, benches, out, model):
@@ -214,17 +212,18 @@ def fig_overhead(ovh, benches, out):
     ypos = list(range(len(CONFIGS)))[::-1]
     for ax, idx, title in ((axes[0], 0, "Code size (.text), x baseline"),
                            (axes[1], 2, "Executed instructions, x baseline")):
+        xmax = max(max(v[idx] for v in ovh[c].values()) for c in CONFIGS) * 1.22
         for y, conf in zip(ypos, CONFIGS):
             vals = [ovh[conf][b][idx] for b in benches]
             g = gmean(vals)
             ax.barh(y, g, height=0.5, color=SERIES[0], edgecolor=SURFACE, linewidth=1)
             ax.scatter(vals, [y] * len(vals), s=14, color=INK2, zorder=3, linewidths=0)
-            ax.text(max(vals) + 0.12, y, "%.2fx" % g, va="center", fontsize=8, color=INK2)
+            ax.text(max(vals) + 0.025 * xmax, y, "%.2fx" % g, va="center", fontsize=8, color=INK2)
         ax.axvline(1, color=AXIS, linewidth=0.8)
         ax.set_title(title, loc="left", fontsize=10, color=INK, pad=8)
         style(ax)
         ax.spines["left"].set_visible(False)
-        ax.set_xlim(0, max(max(v[idx] for v in ovh[c].values()) for c in CONFIGS) * 1.18)
+        ax.set_xlim(0, xmax)
     axes[0].set_yticks(ypos)
     axes[0].set_yticklabels(CONFIGS)
     handles = [Patch(facecolor=SERIES[0], label="geometric mean"),
@@ -260,7 +259,7 @@ def table_overhead(ovh, metrics, benches, out):
 def table_mwtf(agg, ovh, benches, out):
     """Mean work to failure gain: SDC per run is proportional to (SDC rate x
     number of executed instructions), faults being uniform in time."""
-    lines = ["| configuration | " + " | ".join("%s: SDC reduction / MWTF gain" % m for m, _ in MODELS) + " |",
+    lines = ["| configuration | " + " | ".join(title.lower() for _, title in MODELS) + " |",
              "|---" + "|---:" * len(MODELS) + "|"]
     for conf in CONFIGS:
         cells = []
@@ -289,6 +288,10 @@ def table_before_after(before, after, out, confs=("EDDI+RASM", "EDDI+RACFED")):
     write(out, "fi_before_after", "\n".join(lines) + "\n")
 
 
+LABEL_OFFSETS = {"sEDDI": (-0.18, -0.06, "right"), "EDDI": (0.18, 0.07, "left"),
+                 "EDDI+CFCSS": (0.18, -0.07, "left"), "EDDI+RASM": (0.18, 0.06, "left")}
+
+
 def fig_tradeoff(agg, ovh, benches, out):
     fig, ax = plt.subplots(figsize=(6.4, 4.4))
     base = agg[("baseline", "reg")]
@@ -299,12 +302,13 @@ def fig_tradeoff(agg, ovh, benches, out):
         lo, hi = wilson(c["sdc"], c["n"])
         ax.plot([x, x], [100 * lo, 100 * hi], color=AXIS, linewidth=2, solid_capstyle="round")
         ax.scatter([x], [100 * y], s=36, color=SERIES[0], edgecolors=SURFACE, linewidths=1.5, zorder=3)
-        dx = 0.05
-        ax.text(x + dx, 100 * y, conf, fontsize=8, color=INK2, va="center")
+        # labels at the right of the points, moved where two of them would overlap
+        dx, dy, ha = LABEL_OFFSETS.get(conf, (0.18, 0.0, "left"))
+        ax.text(x + dx, 100 * y + dy, conf, fontsize=8, color=INK2, va="center", ha=ha)
     ax.set_xlabel("executed instructions (geometric mean, x baseline)")
     ax.set_ylabel("SDC rate, register bit-flips (%)")
     ax.set_title("Silent data corruptions vs. cost (95% Wilson interval)", loc="left", fontsize=10, pad=8)
-    ax.set_ylim(bottom=0)
+    ax.set_ylim(-0.12, None)
     style(ax, "both")
     save(fig, out, "tradeoff")
 
