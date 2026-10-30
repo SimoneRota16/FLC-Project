@@ -125,7 +125,8 @@ Tutti i percorsi sono relativi a `ASPIS-Project/`.
 
 Nella radice del repository: `README.md`, la proposta del progetto (`FLC
 Project Proposals AY 202627.txt`), le indicazioni dei supervisori
-(`Buongiorno,.txt`) e, solo nel branch di lavoro, questa guida (`guida/`).
+(`Buongiorno,.txt`) e, fuori dalla cartella del progetto, questa guida
+(`guida/`).
 
 # 15. Cosa è stato tolto (la versione completa)
 

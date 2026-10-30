@@ -113,7 +113,7 @@ I numeri precisi sono nel capitolo 11.
 | `ASPIS-Project/fault_injection/` | l'iniettore (`injector/fi.c`), la campagna (`campaign.py`, `campaign.toml`), l'analisi (`analyze.py`, `export.py`) |
 | `ASPIS-Project/results/` | i log dei test e i risultati della campagna |
 | `ASPIS-Project/report/` | il report (`report.md`, `report.pdf`) e lo script che lo genera |
-| `guida/` | questa guida (solo nel branch di lavoro, non nel `main`) |
+| `guida/` | questa guida (fuori dalla cartella del progetto) |
 
 ## 1.5 Una nota sulla dimensione del progetto
 
