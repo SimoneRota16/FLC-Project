@@ -87,8 +87,8 @@ identico output. Il report lo dice tra i limiti: quella parte di EDDI non è
 provata dalle nostre applicazioni. (Cap. 7.3, 8.2)
 
 **14. Come avete trovato il bug di RASM, visto che nessun test fallisce?**
-Dai numeri: EDDI+RASM aveva più SDC di RASM da solo (10,2% contro 0,88%), il
-che non ha senso. Con `sdc_sites.py` abbiamo visto che tutte le 407 SDC erano
+Dai numeri: EDDI+RASM aveva più SDC di RASM da solo (9,70% contro 0,70%), il
+che non ha senso. Con `sdc_sites.py` abbiamo visto che tutte le 194 SDC erano
 su salti verso blocchi che cominciavano scrivendo una costante nella firma,
 cioè blocchi in cui RASM reimpostava la firma senza controllarla. Erano i
 `VerificationBB` di EDDI, esclusi per errore da un controllo sul nome del
@@ -120,7 +120,8 @@ Perché gdb fa già tutto quello che serve: fermare il programma su
 un'istruzione precisa, cambiare i registri e farlo ripartire. Un iniettore
 scritto da noi con `ptrace` (c'era nelle versioni precedenti) è più veloce,
 ma molto più lungo e difficile da verificare. Il prezzo di gdb è il tempo:
-⟦exp_time_short⟧ (Cap. 9.5)
+circa 0,4 secondi per esperimento invece di 0,06, quindi abbiamo fatto 500
+guasti per combinazione invece di 1000. (Cap. 9.5)
 
 **19. Perché gli indirizzi sono gli stessi in tutte le esecuzioni?**
 Perché gdb disattiva la randomizzazione degli indirizzi (ASLR): il programma
@@ -134,10 +135,11 @@ esecuzioni) equivale a scegliere un istante a caso del tempo di esecuzione.
 (Cap. 9.2)
 
 **21. Quanti esperimenti e quanto sono affidabili i numeri?**
-48.000 (4 applicazioni × 6 configurazioni × 2 modelli × 1000), più 8000 di
+24.000 (4 applicazioni × 6 configurazioni × 2 modelli × 500), più 4000 di
 EDDI+RASM senza la correzione di RASM. Ogni percentuale ha un intervallo di
-confidenza al 95% di Wilson: per esempio la SDC di EDDI con i bit-flip nei
-registri è 0,20%, con intervallo 0,10-0,39%. (Cap. 10.3)
+confidenza al 95% di Wilson: per esempio la SDC della `baseline` con i
+bit-flip nei registri è 2,11%, con intervallo 1,56-2,83%; con EDDI, 0 SDC su
+2000, cioè meno dello 0,19%. (Cap. 10.3)
 
 **22. Perché l'intervallo di Wilson e non quello classico?**
 Perché quello classico funziona male con percentuali vicine a zero (con zero
@@ -152,11 +154,11 @@ Perché ogni funzione esiste in più versioni (`f`, `f_ret`, `f_dup`,
 `f_ret_dup`), anche quelle non più usate restano nell'eseguibile, ogni
 controllo aggiunge blocchi, e a `-O0` tutto passa dallo stack. (Cap. 11.1)
 
-**25. Perché EDDI "rileva" il 78% dei salti invertiti, se non vede i salti?**
+**25. Perché EDDI "rileva" il 77% dei salti invertiti, se non vede i salti?**
 Perché il 76% dei salti condizionali eseguiti da un programma con EDDI sono i
 salti dei suoi controlli: invertirne uno manda il programma nel blocco
-d'errore. Classificando i salti colpiti, 3066 dei 3126 rilevamenti erano
-salti dei controlli; gli altri 60 sono salti del programma nelle funzioni
+d'errore. Classificando i salti colpiti, 1517 dei 1543 rilevamenti erano
+salti dei controlli; gli altri 26 sono salti del programma nelle funzioni
 duplicate, come la `select` di `load_at`, che con EDDI diventa due salti, uno
 per copia. Lo stesso per CFCSS (62%), dove tutti i rilevamenti sono salti dei
 controlli. (Cap. 11.3)
@@ -164,12 +166,13 @@ controlli. (Cap. 11.3)
 **26. Qual è la configurazione migliore?**
 Dipende da cosa si teme e da quanto si può pagare: contro i guasti nei dati
 serve EDDI, contro i salti sbagliati serve RASM; insieme non lasciano quasi
-nessuna SDC (2 su 4000 per i registri, 0 su 4000 per i salti), ma costano
+nessuna SDC (4 su 2000 per i registri, che non si distinguono dallo 0 di
+EDDI da solo, e 0 su 2000 per i salti), ma costano
 circa 6 volte le istruzioni. (Cap. 11.6)
 
 **27. Quali sono i limiti del vostro lavoro?**
 Solo registri generali e salti (niente registri in virgola mobile, memoria,
-guasti multipli); 1000 guasti per applicazione, quindi intervalli larghi sulla
+guasti multipli); 500 guasti per applicazione, quindi intervalli larghi sulla
 singola applicazione; costo misurato in istruzioni e non in tempo; le
 tecniche sull'IR non vedono i salti creati dal back-end; il bug di EDDI è
 aggirato e non corretto. (Report, sezione 7)

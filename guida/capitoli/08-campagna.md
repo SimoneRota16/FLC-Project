@@ -71,7 +71,12 @@ rilanciandola rifà solo quello che manca.
 
 I numeri della nostra campagna: 4 applicazioni × 6 configurazioni × 2 modelli
 × 500 = **24.000 esperimenti**, più **4000** di EDDI+RASM con ASPIS senza la
-correzione di RASM (4 applicazioni × 2 modelli × 500). ⟦campaign_time⟧
+correzione di RASM (4 applicazioni × 2 modelli × 500). Su una macchina
+virtuale con 4 core la campagna principale ha richiesto circa 38 minuti
+(compilazioni e golden run pochi secondi, il resto esperimenti), quella senza
+correzione circa 6. Undici bit-flip su 12.000 sono risultati "non iniettati"
+(capitolo 9.3) e non vengono contati: per questo alcune configurazioni hanno
+1995-1999 esperimenti invece di 2000.
 
 ## 10.3 Percentuali e intervalli di confidenza
 
@@ -96,7 +101,16 @@ intervallo = ----------------------------------------------      con z = 1,96
 
 Esempi dalla nostra campagna:
 
-⟦wilson_examples⟧
+| | k / n | p | intervallo di Wilson al 95% |
+|---|---:|---:|---|
+| EDDI, bit-flip nei registri | 0 / 2000 | 0% | 0,00% – 0,19% |
+| EDDI+RASM, salti invertiti | 0 / 2000 | 0% | 0,00% – 0,19% |
+| baseline, bit-flip nei registri | 42 / 1995 | 2,11% | 1,56% – 2,83% |
+
+Il primo esempio si legge: "non abbiamo visto nessuna SDC su 2000 bit-flip;
+la vera probabilità è, con il 95% di confidenza, sotto lo 0,19%". Quando due
+intervalli non si sovrappongono (1,56-2,83% contro 0,00-0,19%), la differenza
+non è dovuta al caso.
 
 ## 10.4 La media geometrica
 
@@ -105,7 +119,9 @@ geometrica** dei rapporti, `(r1 · r2 · r3 · r4)^(1/4)`, non quella aritmetica
 Il motivo: i rapporti si moltiplicano, non si sommano. Se un programma
 raddoppia (2x) e un altro dimezza (0,5x), la media aritmetica dice 1,25x,
 quella geometrica 1x, che è la risposta giusta ("in media non cambia
-nulla"). ⟦gmean_example⟧
+nulla"). Per EDDI i rapporti delle istruzioni eseguite sono 3,68 (`aes128`),
+3,63 (`fft`), 3,56 (`huffman`) e 4,12 (`pid_control`): la media geometrica è
+3,74.
 
 ## 10.5 Gli script di analisi
 

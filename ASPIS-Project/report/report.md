@@ -27,14 +27,14 @@ the ASPIS main branch for regression testing.
   the executed instructions with valgrind, and ran **28,000 experiments**
   that flip a bit in a register or invert a conditional jump, on six
   hardening configurations.
-- EDDI reduces the silent data corruptions (SDCs) caused by register
-  bit-flips from 1.43% to 0.20% of the faults, at 3.7 times the executed
-  instructions. RASM detects 99.1% of the inverted branches, CFCSS only
-  62.0%. The campaign also revealed a **bug in RASM**: it did not check the
-  blocks created by EDDI, so EDDI combined with RASM missed more inverted
-  branches than RASM alone (10.2% of SDCs instead of 0.88%). We fixed it
-  with a one-line change; with the fix the combination leaves no SDC in 4000
-  inverted branches.
+- EDDI removes the silent data corruptions (SDCs) caused by register
+  bit-flips: none in 2000 faults, against 2.11% in the unprotected programs,
+  at 3.7 times the executed instructions. RASM detects 99.3% of the inverted
+  branches, CFCSS only 62.5%. The campaign also revealed a **bug in RASM**:
+  it did not check the blocks created by EDDI, so EDDI combined with RASM
+  missed more inverted branches than RASM alone (9.70% of SDCs instead of
+  0.70%). We fixed it with a one-line change; with the fix the combination
+  leaves no SDC in 2000 inverted branches.
 
 The fix of RASM and the test entries are ready as two patches for the ASPIS
 repository, and the EDDI bug as a bug report (`aspis-integration/`). All the
@@ -260,8 +260,8 @@ valgrind, driven by two short Python scripts.
   (`callgrind`), which counts how many times each instruction of the program
   is executed; `objdump` tells which ones are conditional jumps. The output of
   a normal run is the reference (the *golden output*).
-- **Experiment.** `fault_injection/gdb_inject.py` (about 80 lines, half of
-  them comments) runs inside gdb. It receives an instruction and one of its
+- **Experiment.** `fault_injection/gdb_inject.py` (72 lines, 45 of them
+  code) runs inside gdb. It receives an instruction and one of its
   executions, the *k*-th, drawn from the counts of the golden run, and puts a
   breakpoint on that instruction with an *ignore count* of *k*-1, so that gdb
   stops the program right before the *k*-th execution (gdb disables address
@@ -289,8 +289,12 @@ CFCSS, RASM, and EDDI combined with CFCSS and with RASM, built with ASPIS
 model we injected 500 faults, drawn with a seed derived from the names:
 **24,000 experiments**. To measure the effect of the RASM bug (Section 5.4),
 EDDI+RASM was also run with ASPIS `b66a090` without the fix: 4,000 more
-experiments. Each proportion is given with its 95% confidence interval
-(Wilson score interval).
+experiments. Eleven register bit-flips were not injected, because the drawn
+execution does not exist: valgrind counts the few instructions of the PLT
+stubs, through which the programs call the C library, together with the
+calling instruction. They are left out; the other experiments are still
+uniform over the real executions. Each proportion is given with its 95%
+confidence interval (Wilson score interval).
 
 # 5. Results
 
@@ -317,23 +321,25 @@ and 2.33x for RASM. Combined with EDDI the costs add up: 5.46x with CFCSS and
 
 ## 5.2 Register bit-flips
 
-![Outcome of the injected faults (4000 per configuration and fault model). The number at the right of each bar is the share of silent data corruptions.](figures/fi_outcomes.svg)
+![Outcome of the injected faults (500 per application, configuration and fault model). The number at the right of each bar is the share of silent data corruptions.](figures/fi_outcomes.svg)
 
 {{table:outcomes_reg}}
 
 : Register bit-flips: outcome of the injections (% of n faults, pooled over
 the four applications), with the 95% confidence interval of the SDC rate.
 
-Register bit-flips are mostly harmless: in the unprotected programs 86.5%
+Register bit-flips are mostly harmless: in the unprotected programs 83.6%
 of them are masked (the register was not in use, or was overwritten before
-being read), 12.0% crash the program (for example a corrupted address) and
-1.43% silently corrupt the output. EDDI leaves 0.20% of SDCs, 7 times fewer.
-Its checks detect only 3.1% of the faults, but these are the dangerous ones:
-a wrong value is caught before it reaches a store, a call or a branch. The
-control-flow techniques alone leave 0.80% (CFCSS) and 0.60% (RASM), since a
+being read), 14.3% crash the program (for example a corrupted address) and
+2.11% silently corrupt the output. EDDI leaves no SDC in 2000 faults: with
+95% confidence its SDC rate is below 0.19%, more than ten times lower. Its
+checks detect only 2.9% of the faults, but these are the dangerous ones: a
+wrong value is caught before it reaches a store, a call or a branch. The
+control-flow techniques alone leave 0.75% (CFCSS) and 0.80% (RASM), since a
 signature only sees the bit-flips that change the path of the program.
-Combined with EDDI they leave one or two SDCs in 4000 faults (0.03% and
-0.05%).
+Combined with EDDI they leave one and four SDCs in 2000 faults (0.05% and
+0.20%): with so few cases these rates cannot be told apart from that of EDDI
+alone, as the intervals overlap.
 
 ## 5.3 Inverted branches
 
@@ -342,7 +348,7 @@ Combined with EDDI they leave one or two SDCs in 4000 faults (0.03% and
 : Inverted branches: outcome of the injections (% of n faults, pooled over
 the four applications).
 
-Inverted branches are the most harmful faults: 80.3% of them corrupt the
+Inverted branches are the most harmful faults: 79.3% of them corrupt the
 output of the unprotected programs, because the results depend on how many
 times the loops run and on which path the data-dependent branches take.
 
@@ -350,32 +356,32 @@ EDDI and CFCSS detect almost only the inversions of the jumps of their own
 checks. Counted on the golden runs with `fault_injection/check_jumps.py`,
 76.3% of the conditional jumps executed by the programs hardened with EDDI
 belong to its checks, and 62.4% with CFCSS: an inverted check jumps to the
-error handler. These shares are close to their detection rates (78.2% and
-62.0%). The inversions of the program's own branches are not seen. EDDI
+error handler. These shares are close to their detection rates (77.2% and
+62.5%). The inversions of the program's own branches are not seen. EDDI
 compares the two copies of the condition before the jump, but then executes
 a single jump, so both copies of the data follow the wrong path; CFCSS only
 checks that the program follows an edge of the control-flow graph, and the
-wrong successor of a branch is an edge too. They leave 17.8% and 30.0% of
+wrong successor of a branch is an edge too. They leave 18.75% and 29.05% of
 SDCs.
 
-RASM detects 99.1% of the inverted branches: before leaving a block it
+RASM detects 99.3% of the inverted branches: before leaving a block it
 updates the signature using the same condition as the jump, so a jump in the
 other direction reaches a block that expects a different signature. All its
-35 SDCs (0.88%) come from a single conditional jump of `pid_control` that is
+14 SDCs (0.70%) come from a single conditional jump of `pid_control` that is
 not a branch of the IR: in `load_at`, `return (k >= 1200 && k < 1300) ?
 1.5f : 0.0f;` is a `select` between two floats, which the x86 back-end
 implements with a jump when it does not optimise. No technique working on
-the IR can see that jump. EDDI with CFCSS leaves 7.8% of SDCs; EDDI with RASM
+the IR can see that jump. EDDI with CFCSS leaves 7.7% of SDCs; EDDI with RASM
 none, because EDDI duplicates the `select` too, and a wrong jump in one copy
 makes the two copies differ.
 
 ## 5.4 A bug in RASM, found by the fault injection
 
-With ASPIS `b66a090`, without our fix, EDDI+RASM left 10.2% of SDCs with
-inverted branches, much more than RASM alone (0.88%), although it adds the
+With ASPIS `b66a090`, without our fix, EDDI+RASM left 9.70% of SDCs with
+inverted branches, much more than RASM alone (0.70%), although it adds the
 checks of EDDI to those of RASM. With `fault_injection/sdc_sites.py`, which
 maps the SDCs to the instructions where the faults were injected and shows
-the successors of the jumps, we found that all the 407 SDCs happened at
+the successors of the jumps, we found that all the 194 SDCs happened at
 conditional jumps towards blocks that start by writing a constant into the
 signature of RASM, instead of checking it.
 
@@ -397,30 +403,30 @@ VerificationBB2:                        ; created by EDDI
 with `RASM_` (and the landing pads of C++ exceptions) are exempted, so the
 `VerificationBB` blocks get the entry check like any other block. RACFED had
 the same code and is fixed in the same way. With the fix EDDI+RASM leaves no
-SDC among the 4000 inverted branches, and its signature checks detect 65.0%
-of them instead of 35.1%; the rest is detected by the checks of EDDI.
+SDC among the 2000 inverted branches, and its signature checks detect 67.1%
+of them instead of 36.4%; the rest is detected by the checks of EDDI.
 
 {{table:before_after}}
 
-: EDDI+RASM before and after the fix of RASM (4000 faults per row).
+: EDDI+RASM before and after the fix of RASM (2000 faults per row).
 
 ## 5.5 Per application
 
 {{table:sdc_reg_per_app}}
 
-: SDC rate (%) of register bit-flips per application (1000 faults each).
+: SDC rate (%) of register bit-flips per application (500 faults each).
 
 {{table:sdc_branch_per_app}}
 
-: SDC rate (%) of inverted branches per application (1000 faults each).
+: SDC rate (%) of inverted branches per application (500 faults each).
 
-The unprotected applications have similar SDC rates for register bit-flips,
-between 1.1% (`fft`, `huffman`) and 1.9% (`aes128`), and EDDI brings all of
-them to 0.3% or less. With 1000 faults per application the differences
-between the applications are not significant: the 95% intervals overlap
-(1.2-2.9% for `aes128`, 0.6-2.0% for `fft`). For inverted branches the
-picture is the same in all the applications; the SDCs left by RASM are all
-in `pid_control` (Section 5.3).
+The unprotected applications have similar SDC rates for register
+bit-flips, between 2.0% and 2.2%, and EDDI brings all of them to zero. With
+500 faults per application the intervals are wide (1.1-3.6% for `aes128`),
+so only large differences between the applications would be visible. For
+inverted branches the unprotected applications do differ, from 68.4%
+(`fft`) to 90.0% (`huffman`), but the protections behave in the same way in
+all of them; the SDCs left by RASM are all in `pid_control` (Section 5.3).
 
 # 6. Integration into ASPIS
 
@@ -443,9 +449,9 @@ ASPIS are checked on them too. Nothing has been submitted yet.
 - The fault models cover the general purpose registers and the conditional
   jumps only. Faults in the floating-point registers (used by `fft` and
   `pid_control`), in memory, and multiple faults are not injected.
-- 1000 faults per application and configuration give wide intervals on the
-  rates of single applications (for example 1.2-2.9% for the register SDC rate of `aes128`); the
-  pooled rates (4000 faults) are more precise.
+- 500 faults per application and configuration give wide intervals on the
+  rates of single applications (for example 1.1-3.6% for the register SDC
+  rate of `aes128`); the pooled rates (2000 faults) are more precise.
 - We compare the cost with the executed instructions, not with the run
   time: the applications run for a few milliseconds, too little for precise
   time measurements.
@@ -508,8 +514,8 @@ python3 <repo>/fault_injection/analyze.py --campaign <repo>/results/fault_inject
 python3 <repo>/report/build.py
 ```
 
-The campaign takes about 20 minutes on a 4-core virtual
-machine. The run without the fix of RASM uses ASPIS `b66a090` without
+The campaign takes about 40 minutes on a 4-core virtual machine, almost
+all spent by gdb (an experiment takes about 0.4 s, with four at a time). The run without the fix of RASM uses ASPIS `b66a090` without
 patches and the EDDI+RASM configuration alone. For the harness on the main
 branch, our entries are added with `pytest test.py --tests-file
 config/tests.toml <repo>/aspis-integration/flc_tests.toml`.

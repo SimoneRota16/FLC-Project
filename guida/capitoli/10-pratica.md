@@ -65,7 +65,7 @@ cd testing && pytest test.py -v > harness_fixed.log && cd ..
     -o aes128 --build-dir /tmp/aes --no-cleanup && ./aes128
 less /tmp/aes/out.ll                           # l'IR finale
 
-# 5. la campagna (⟦campaign_time_short⟧ con 4 core); scrive i risultati in results/
+# 5. la campagna (circa 40 minuti con 4 core); scrive i risultati in results/
 #    adattare i percorsi in fault_injection/campaign.toml, poi:
 python3 <repo>/ASPIS-Project/fault_injection/campaign.py <repo>/ASPIS-Project/fault_injection/campaign.toml
 

@@ -86,36 +86,37 @@ ed è più facile da verificare; il prezzo è il tempo.
 
 **8. La campagna.** 4 applicazioni × 6 configurazioni × 2 modelli × 500 =
 24.000 esperimenti, più 4000 di EDDI+RASM senza la correzione. Semi fissi,
-ASLR disattivato, intervalli di Wilson al 95%, ⟦campaign_time_short⟧ su 4 core
-(capitolo 10).
+ASLR disattivato, intervalli di Wilson al 95%, circa 45 minuti in tutto su 4
+core (capitolo 10).
 
 **9. Il costo.** EDDI esegue 3,74 volte le istruzioni e ha il codice 9,27
 volte più grande; CFCSS 1,65x e RASM 2,33x; EDDI+RASM 5,95x. Il costo è
 misurato in istruzioni eseguite, non in tempo, perché i programmi durano
 pochi millisecondi (capitolo 11.1).
 
-**10. Bit-flip nei registri.** Senza protezione l'1,43% dei guasti produce una
-SDC; EDDI la porta allo 0,20%, circa 7 volte meno; CFCSS e RASM da soli poco
-(0,80% e 0,60%); EDDI con una tecnica del flusso 0,03-0,05%, cioè 1 o 2 casi
-su 4000 (capitolo 11.2).
+**10. Bit-flip nei registri.** Senza protezione il 2,11% dei guasti produce
+una SDC; con EDDI nessuna su 2000 (con il 95% di confidenza meno dello
+0,19%, più di dieci volte meno); CFCSS e RASM da soli poco (0,75% e 0,80%);
+EDDI con una tecnica del flusso 1 o 4 casi su 2000, che non si distinguono da
+EDDI da solo (capitolo 11.2).
 
-**11. Salti invertiti.** Senza protezione l'80,3% è una SDC. EDDI e CFCSS
+**11. Salti invertiti.** Senza protezione il 79,3% è una SDC. EDDI e CFCSS
 rilevano quasi solo i salti dei loro controlli (76,3% e 62,4% dei salti
-eseguiti) e lasciano il 17,8% e il 30,0%; RASM rileva il 99,1%, e le sue 35
+eseguiti) e lasciano il 18,75% e il 29,05%; RASM rileva il 99,3%, e le sue 14
 SDC vengono tutte dal salto che il back-end crea per la `select` di
 `load_at`; EDDI+RASM non ne lascia nessuna (capitolo 11.3). È la slide in cui
 è più facile ricevere domande tecniche: rileggete bene il capitolo 11.3.
 
 **12. Bug di RASM: il sintomo.** La slide più importante. EDDI+RASM lasciava il
-10,2% di SDC, contro lo 0,88% di RASM da solo: un controsenso. Con
-`sdc_sites.py` si vede che tutte le 407 SDC erano salti verso blocchi che
+9,70% di SDC, contro lo 0,70% di RASM da solo: un controsenso. Con
+`sdc_sites.py` si vede che tutte le 194 SDC erano salti verso blocchi che
 cominciano scrivendo una costante nella firma: i `VerificationBB` di EDDI,
 dove RASM reimpostava la firma invece di controllarla (capitolo 8.3).
 
 **13. Bug di RASM: la correzione.** Una riga: l'eccezione vale solo per i
 blocchi il cui nome comincia con `RASM_`; lo stesso in RACFED. Dopo la
-correzione: da 407 a 0 SDC, i controlli di RASM rilevano il 65,0% dei salti
-invertiti invece del 35,1%, e i test di ASPIS danno gli stessi risultati.
+correzione: da 194 a 0 SDC, i controlli di RASM rilevano il 67,1% dei salti
+invertiti invece del 36,4%, e i test di ASPIS danno gli stessi risultati.
 
 ## 16.4 Parte 4: integrazione, limiti, IA (slide 14-17)
 

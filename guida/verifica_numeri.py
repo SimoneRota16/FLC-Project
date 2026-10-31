@@ -96,7 +96,7 @@ def main():
     print("   istruzioni eseguite dalla baseline: " +
           ", ".join("%s %s" % (a, by[(a, "baseline")]["executed_instructions"]) for a in APPS))
 
-    print("== SDC per applicazione (%, 1000 guasti per cella)")
+    print("== SDC per applicazione (%, 500 guasti per cella)")
     cell = {(r["application"], r["config"], r["model"]): r for r in oc}
     for model in ("reg", "branch"):
         for a in APPS:

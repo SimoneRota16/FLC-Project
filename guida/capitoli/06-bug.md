@@ -107,32 +107,33 @@ potevano trovarlo. L'ha trovato la fault injection.
 
 **Sintomo.** Ci si aspetta che EDDI+RASM protegga almeno quanto RASM da solo,
 visto che aggiunge altri controlli. Invece, contro i salti invertiti,
-EDDI+RASM lasciava il **10,2%** di SDC, contro lo **0,88%** di RASM da solo
+EDDI+RASM lasciava il **9,70%** di SDC, contro lo **0,70%** di RASM da solo
 (capitolo 11).
 
 **Come l'abbiamo trovato.** Il file dei risultati grezzi
 (`results/fault_injection/before_fix/raw.csv.gz`) ha una riga per esperimento,
 con l'indirizzo dell'istruzione colpita (`pc_off`, la distanza dall'inizio del
 codice). Prendendo gli esperimenti finiti in SDC e disassemblando il
-programma a quegli indirizzi (con `objdump -d`), si vede che **tutte** le 407
+programma a quegli indirizzi (con `objdump -d`), si vede che **tutte** le 194
 SDC sono avvenute su salti condizionali verso blocchi che cominciano con la
 stessa istruzione: `mov DWORD PTR [rbp-0x4], <costante>`, cioè la scrittura di
 una costante nella variabile della firma di RASM. In altre parole, in quei
-blocchi RASM non controllava la firma: la reimpostava. In 406 casi su 407
-entrambi i successori del salto erano blocchi così; nell'unico caso restante
-solo uno, quello sbagliato (l'altro controllava la firma, e se il salto fosse
-finito lì l'errore sarebbe stato rilevato). Lo script
+blocchi RASM non controllava la firma: la reimpostava. In tutti i casi
+entrambi i successori del salto erano blocchi così. Lo script
 `fault_injection/sdc_sites.py` fa esattamente questa analisi:
 
 ```text
 $ python3 fault_injection/sdc_sites.py results/fault_injection/before_fix/raw.csv.gz \
-      <campagna> huffman EDDI+RASM
-huffman EDDI+RASM branch: 153 SDC at 20 instructions
-    36 x  b752  fn_2_ret_dup         jne    b759 <fn_2_ret_dup+0x279>
-            not taken -> jmp    b830 <fn_2_ret_dup+0x350>
-            taken     -> mov    DWORD PTR [rbp-0x4],0x4a6
+      <cartella di lavoro della campagna> huffman EDDI+RASM
+huffman EDDI+RASM branch: 64 SDC at 16 instructions
+    18 x  bdc3  fn_4_ret_dup         jne    bdca <fn_4_ret_dup+0x19a>
+            not taken -> jmp    bfe7 <fn_4_ret_dup+0x3b7>
+            taken     -> mov    DWORD PTR [rbp-0x4],0x4d8
     ...
 ```
+
+(il successore "non preso" è un `jmp` verso `bfe7`, che comincia anch'esso con
+`mov DWORD PTR [rbp-0x4],0x4e8`).
 
 **Causa.** In `RASM.cpp`, all'ingresso di ogni blocco, c'è questa scelta:
 
@@ -183,7 +184,7 @@ eccezioni del C++). Lo stesso errore c'era, identico, in `RACFED.cpp` (con
 `starts_with("RACFED_")`), e la patch corregge anche quello.
 
 **Verifica.** Abbiamo rifatto gli esperimenti di EDDI+RASM con la correzione:
-nessuna SDC sui 4000 salti invertiti (prima erano 407), e i controlli di RASM
-ne rilevano il 65,0% invece del 35,1% (il resto lo rilevano i controlli di
+nessuna SDC sui 2000 salti invertiti (prima erano 194), e i controlli di RASM
+ne rilevano il 67,1% invece del 36,4% (il resto lo rilevano i controlli di
 EDDI). La tabella completa è nel capitolo 11. Sui 48 test già presenti
 in ASPIS la correzione non cambia nessun risultato (capitolo 7).

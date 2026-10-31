@@ -12,7 +12,7 @@ script Python.
   leggere e cambiare i registri e farlo ripartire: è esattamente quello che
   serve per iniettare un guasto. Lo usiamo in ogni esperimento.
 
-Lo script `fault_injection/gdb_inject.py` (circa 80 righe, metà commenti) fa
+Lo script `fault_injection/gdb_inject.py` (72 righe, di cui 45 di codice) fa
 un esperimento dentro gdb; `fault_injection/campaign.py` prepara gli
 esperimenti, li lancia e ne classifica l'esito (capitolo 10).
 
@@ -153,14 +153,25 @@ Ogni esperimento diventa una riga di `raw.csv.gz`. Per esempio, dai risultati
 di `aes128` con EDDI:
 
 ```text
-⟦csv_example⟧
+application,config,model,id,address,occurrence,target,bit,outcome,exit,signal,time_ms
+aes128,EDDI,reg,0,881f,3096,rax,17,masked,0,-,505
+aes128,EDDI,reg,7,8974,3237,rsp,3,crash,-1,SIGSEGV,501
+aes128,EDDI,reg,47,8939,7700,rax,4,detected_data,2,-,1239
 ```
 
-⟦csv_comment⟧
+Il primo esperimento ha invertito il bit 17 di `rax` prima della 3096ª
+esecuzione dell'istruzione `0x881f`, senza effetti visibili (*masked*). Il
+secondo ha invertito il bit 3 di `rsp`, il puntatore allo stack: il programma
+è stato fermato dal segnale `SIGSEGV` (*crash*). Nel terzo il valore sbagliato
+di `rax` è stato fermato da un controllo di EDDI: il programma ha stampato
+`FAULT_DETECTED: DataCorruption` ed è uscito con codice 2
+(*detected_data*). L'ultima colonna è la durata dell'esperimento, gdb
+compreso.
 
 ## 9.5 Quanto costa un esperimento
 
-⟦exp_time⟧ La maggior parte del tempo è di gdb: l'avvio (circa un decimo di
+Un esperimento dura in media circa 0,4 secondi (376 ms; la mediana è
+283 ms), con quattro esperimenti in parallelo. La maggior parte del tempo è di gdb: l'avvio (circa un decimo di
 secondo) e le fermate sul breakpoint, perché per ignorare i primi *k*-1
 passaggi gdb ferma comunque il programma ogni volta e lo fa ripartire
 (circa un decimo di millisecondo per passaggio, che nei cicli sono migliaia).
