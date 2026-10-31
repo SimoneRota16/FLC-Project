@@ -1,182 +1,178 @@
-# 9. L'iniettore di guasti (`fi.c`)
+# 9. Iniettare i guasti con gdb e valgrind
 
-`fault_injection/injector/fi.c` è un programma C di circa 550 righe che si
-compila con `gcc -O2 -o fi fi.c` e ha due comandi: `fi profile` (esecuzione
-di riferimento) e `fi inject` (gli esperimenti).
+Non abbiamo scritto un iniettore: usiamo due strumenti che si trovano su
+qualunque Linux (`sudo apt install gdb valgrind`), guidati da due brevi
+script Python.
 
-## 9.1 `ptrace` in breve
+- **valgrind** esegue il programma su un processore simulato e, con lo
+  strumento `callgrind`, conta quante volte viene eseguita ogni istruzione.
+  Lo usiamo una volta per programma, nella esecuzione senza guasti (la
+  *golden run*).
+- **gdb**, il debugger, sa fermare un programma su qualunque istruzione,
+  leggere e cambiare i registri e farlo ripartire: è esattamente quello che
+  serve per iniettare un guasto. Lo usiamo in ogni esperimento.
 
-`ptrace` è la chiamata di sistema di Linux con cui un processo (il
-*tracer*, qui `fi`) controlla un altro processo (il *tracee*, il programma
-sotto test): è quella che usa `gdb`. Le operazioni che usiamo:
+Lo script `fault_injection/gdb_inject.py` (circa 80 righe, metà commenti) fa
+un esperimento dentro gdb; `fault_injection/campaign.py` prepara gli
+esperimenti, li lancia e ne classifica l'esito (capitolo 10).
 
-| Operazione | Cosa fa |
-|---|---|
-| `PTRACE_TRACEME` | chiamata dal figlio prima di `execve`: "fatti controllare da mio padre". Il figlio si ferma subito dopo l'`exec` |
-| `waitpid` | il padre aspetta che il figlio si fermi (per un segnale) o termini |
-| `PTRACE_GETREGS` / `PTRACE_SETREGS` | legge / scrive tutti i registri del figlio (`struct user_regs_struct`: `rax`, ..., `rip`, `eflags`) |
-| `PTRACE_PEEKTEXT` / `PTRACE_POKETEXT` | legge / scrive 8 byte della memoria del figlio (anche il codice) |
-| `PTRACE_SINGLESTEP` | esegue una sola istruzione e si ferma di nuovo |
-| `PTRACE_CONT` | fa ripartire il figlio fino al prossimo segnale |
-| `PTRACE_DETACH` | smette di controllare il figlio, che prosegue da solo |
-| `PTRACE_O_EXITKILL` | se `fi` muore, il figlio viene ucciso (niente processi orfani) |
+## 9.1 La golden run
 
-Quando il figlio esegue un'istruzione `int3` (il byte `0xcc`, il *breakpoint*
-dei debugger) o termina un passo singolo, riceve un `SIGTRAP` e si ferma: il
-padre lo vede con `waitpid`.
+Per ogni programma, `campaign.py`:
 
-Il figlio viene avviato (funzione `spawn`) con `fork` ed `execve`, con
-l'output rediretto su file, e con `personality(ADDR_NO_RANDOMIZE)`, che
-**disattiva la randomizzazione degli indirizzi** (ASLR): così il codice del
-programma sta allo stesso indirizzo in ogni esecuzione, e l'indirizzo di
-un'istruzione trovato nel profilo vale anche negli esperimenti.
+1. lo esegue normalmente cinque volte: l'output è quello di riferimento (il
+   *golden output*) e il tempo più breve serve per il limite degli *hang*
+   (9.4);
+2. lo esegue una volta sotto valgrind:
 
-## 9.2 `fi profile`: l'esecuzione di riferimento
+   ```bash
+   valgrind --tool=callgrind --dump-instr=yes --dump-line=no \
+       --compress-pos=no --compress-strings=no --callgrind-out-file=callgrind.out ./prog
+   ```
 
-```bash
-fi profile golden.prof golden.stdout -- ./prog
-```
+   Il file `callgrind.out` contiene, per ogni istruzione eseguita, il suo
+   indirizzo e il numero di esecuzioni, raggruppati per file eseguibile
+   (`ob=`): teniamo solo le istruzioni del programma, non quelle della
+   libreria C e del caricatore dinamico;
+3. con `objdump -d` segna quali di quelle istruzioni sono salti condizionali
+   (`je`, `jne`, `jl`, ..., tutti i `j...` tranne `jmp`);
+4. scrive il profilo `profile.csv`. Le prime righe di quello di `aes128` senza
+   protezione:
 
-La funzione `cmd_profile`:
+   ```text
+   address,executions,jcc
+   1080,1,0
+   1084,1,0
+   1086,1,0
+   ...
+   10c1,1,1          # 10c1: je 10d8 <deregister_tm_clones+0x28>, un salto condizionale
+   ```
 
-1. avvia il programma sotto `ptrace`;
-2. legge `/proc/<pid>/maps` per trovare l'intervallo di indirizzi del
-   **codice del programma** (la mappatura eseguibile del file del programma),
-   così da distinguere le istruzioni del programma da quelle della libreria C
-   e del caricatore dinamico (funzione `text_range`);
-3. esegue il programma **un'istruzione alla volta** (`PTRACE_SINGLESTEP`). A
-   ogni passo legge `rip`: se è nel codice del programma, incrementa il
-   contatore di quell'indirizzo. La prima volta che incontra un indirizzo,
-   legge i byte dell'istruzione e controlla se è un salto condizionale
-   (`decode_jcc`);
-4. alla fine scrive il profilo e salva l'output (il *golden output*).
+   In tutto 1289 istruzioni diverse e 645.656 esecuzioni: sono le
+   istruzioni eseguite nel codice del programma, la misura del costo del
+   capitolo 11.1. Anche il codice di avvio che il compilatore aggiunge a ogni
+   programma (`_start`, `deregister_tm_clones`) fa parte dell'eseguibile.
 
-Il profilo è un file di testo:
+Gli indirizzi sono quelli che stampa `objdump`, cioè relativi all'inizio del
+file: il programma è *position independent* e a ogni esecuzione viene
+caricato a un indirizzo base diverso, a meno di disattivare la
+randomizzazione degli indirizzi (ASLR), che gdb disattiva da solo.
 
-```text
-fi-profile 1
-text 555555555000 555555557000     # intervallo del codice del programma
-dynamic 645668 773764              # istruzioni eseguite: nel programma, in totale
-exit 0                             # codice d'uscita
-pcs 1309                           # numero di indirizzi distinti eseguiti
-0 1 0 0 0 0                        # offset, esecuzioni, jcc?, cc, lunghezza, spostamento
-4 1 0 0 0 0
-...
-12 1 1 4 2 2                       # un salto condizionale (cc 4 = je), lungo 2 byte
-...
-```
+## 9.2 Scegliere l'istante
 
-(sono le prime righe del profilo di `aes128` senza protezione: 645.668
-istruzioni nel programma, 773.764 contando anche la libreria C).
+Un guasto transitorio può arrivare in qualunque momento, quindi vogliamo un
+istante a caso dell'esecuzione, cioè **un'esecuzione a caso di un'istruzione
+qualsiasi**. Dal profilo `campaign.py` estrae:
 
-Ogni riga dice quante volte è stata eseguita l'istruzione a quell'offset e,
-se è un salto condizionale, il suo *condition code*, la sua lunghezza in
-byte e lo spostamento del salto.
+1. un'istruzione, con probabilità proporzionale al numero delle sue
+   esecuzioni (un'istruzione eseguita 1000 volte ha 1000 volte più
+   probabilità di una eseguita una volta);
+2. una delle sue esecuzioni, la *k*-esima, con *k* uniforme tra 1 e il
+   numero di esecuzioni.
 
-Eseguire milioni di istruzioni una per una è lento (ogni passo sono due
-cambi di contesto tra processi): il profilo dei programmi più grandi richiede
-decine di secondi. Ma si fa una volta sola per ogni programma.
+Così ogni esecuzione di ogni istruzione ha la stessa probabilità di essere
+scelta. Per i salti invertiti si sceglie solo tra le esecuzioni dei salti
+condizionali. Per i bit-flip si estraggono anche il registro (uno dei 16
+registri generali, da `rax` a `r15`) e il bit (da 0 a 63). I numeri casuali
+vengono da un generatore inizializzato con un seme ricavato dai nomi di
+applicazione, configurazione e modello: rifacendo la campagna si ottengono
+gli stessi esperimenti.
 
-## 9.3 Riconoscere un salto condizionale
+## 9.3 Un esperimento con gdb
 
-`decode_jcc` riconosce le due codifiche dei salti condizionali x86:
-
-- `0x70`-`0x7f` + 1 byte di spostamento (salto corto, lunghezza 2);
-- `0x0f` `0x80`-`0x8f` + 4 byte di spostamento (salto lungo, lunghezza 6);
-
-eventualmente precedute da un prefisso di predizione (`0x2e` o `0x3e`). Il
-*condition code* sono i 4 bit bassi dell'opcode. `jcc_taken` calcola, dai
-flag, se il salto verrebbe preso:
-
-| `cc >> 1` | condizione | salti |
-|---|---|---|
-| 0 | `OF` | `jo` / `jno` |
-| 1 | `CF` | `jb` / `jae` |
-| 2 | `ZF` | `je` / `jne` |
-| 3 | `CF or ZF` | `jbe` / `ja` |
-| 4 | `SF` | `js` / `jns` |
-| 5 | `PF` | `jp` / `jnp` |
-| 6 | `SF != OF` | `jl` / `jge` |
-| 7 | `ZF or SF != OF` | `jle` / `jg` |
-
-Se il bit basso di `cc` è 1 la condizione è negata (`jne` è "salta se **non**
-ZF").
-
-## 9.4 `fi inject`: gli esperimenti
+`campaign.py` lancia gdb così, passando l'esperimento nelle variabili
+d'ambiente (`FI_ADDR`, `FI_K`, `FI_MODEL`, `FI_REG`, `FI_BIT`, ...):
 
 ```bash
-fi inject golden.prof golden.stdout reg 12345 100 300 /dev/shm/tmp -- ./prog
-#                                   modello seme  N  timeout(ms)
+gdb -batch -nx -iex "set debuginfod enabled off" -x gdb_inject.py --args ./prog
 ```
 
-Per ognuno degli N esperimenti, la funzione `cmd_inject`:
-
-1. **sceglie l'istante** (`pick_target`): estrae un numero `k` tra 0 e il
-   totale delle istruzioni eseguite nel profilo, e scorre la lista degli
-   indirizzi sottraendo i contatori finché `k` cade dentro uno di essi. Così
-   ogni *esecuzione* di ogni istruzione ha la stessa probabilità: è come
-   scegliere un istante a caso dell'esecuzione. Il risultato è una coppia
-   (indirizzo, occorrenza): "la 37ª esecuzione dell'istruzione all'offset
-   `0x1a2b`". Per il modello `branch` si considerano solo le esecuzioni dei
-   salti condizionali;
-2. sceglie a caso anche il registro (uno dei 16) e il bit (0-63) da
-   invertire. I numeri casuali vengono da un generatore *splitmix64*
-   inizializzato con il seme: stesso seme, stessi esperimenti;
-3. **avvia** il programma sotto `ptrace`;
-4. **lo ferma** subito prima dell'occorrenza scelta (`run_to_target`): scrive
-   `0xcc` (`int3`) all'indirizzo dell'istruzione e lo lascia correre. A ogni
-   `SIGTRAP` controlla che si sia fermato lì, rimette il byte originale,
-   riporta `rip` indietro di uno e conta. Se non è ancora l'occorrenza
-   giusta, esegue l'istruzione originale con un passo singolo, rimette
-   l'`int3` e continua;
-5. **inietta il guasto**: legge i registri e
-   - modello `reg`: inverte il bit scelto del registro scelto
-     (`*gpr(&regs, reg) ^= 1ull << bit`);
-   - modello `branch`: guarda i flag con `jcc_taken`; se il salto verrebbe
-     preso, mette in `rip` l'indirizzo dell'istruzione successiva (il salto
-     "non viene preso"), altrimenti mette la destinazione del salto. Il salto
-     non viene eseguito: il programma riparte direttamente dal successore
-     sbagliato;
-
-   e scrive i registri modificati;
-6. **lo lascia andare** (`PTRACE_DETACH`) e aspetta che termini, al massimo per
-   il tempo limite (`wait_with_timeout`, che controlla ogni 100 µs e uccide il
-   programma allo scadere);
-7. **classifica** l'esito, in quest'ordine:
-   - `hang` se è scaduto il tempo limite;
-   - `crash` se il programma è stato ucciso da un segnale;
-   - `detected_data` se su stderr c'è `FAULT_DETECTED: DataCorruption`;
-   - `detected_cfc` se su stderr c'è `FAULT_DETECTED: SigMismatch`;
-   - `masked` se l'output è identico a quello di riferimento e il codice
-     d'uscita è lo stesso;
-   - `sdc` altrimenti (output diverso, oppure il programma stesso si è
-     accorto dell'errore e ha stampato `FAIL`);
-8. stampa una riga CSV: numero dell'esperimento, modello, offset e occorrenza
-   dell'istruzione colpita, registro (o *condition code*), bit, esito, codice
-   d'uscita, segnale, durata in microsecondi. Per esempio, dai risultati di
-   `aes128` con EDDI:
+e lo script fa, con l'API Python di gdb, quello che si farebbe a mano. Ecco la
+stessa cosa in una sessione interattiva, per l'esperimento "inverti il bit 11
+di `r11` alla 1808ª esecuzione dell'istruzione `0x12ea`" (in `main` di
+`pid_control` con EDDI, dove viene eseguita 2000 volte):
 
 ```text
-id,model,pc_off,occurrence,target,bit,injected,outcome,exit,signal,time_us
-0,reg,78cf,1872,rsp,18,1,crash,-1,11,76506
-1,reg,7832,5413,rbx,51,1,masked,0,0,209156
+$ gdb ./prog
+(gdb) print &main                      # indirizzo di main nel file: 0x1200
+(gdb) starti > out.txt 2> err.txt      # avvia il programma e fermalo subito
+(gdb) print &main                      # ora vale 0x555555555200: la base è 0x555555554000
+(gdb) break *(0x555555554000 + 0x12ea)
+(gdb) ignore 1 1807                    # ignora i primi 1807 passaggi
+(gdb) continue                         # si ferma prima della 1808ª esecuzione
+(gdb) set $r11 = $r11 ^ (1 << 11)      # il guasto
+(gdb) delete
+(gdb) continue                         # il programma prosegue con il guasto
 ```
 
-   Il primo esperimento ha invertito il bit 18 di `rsp` (il puntatore allo
-   stack) alla 1873ª esecuzione dell'istruzione all'offset `0x78cf`: il
-   programma è stato ucciso dal segnale 11 (`SIGSEGV`). Il secondo ha
-   colpito `rbx` senza effetti visibili.
+I passi dello script:
 
-Un esperimento dura in media circa 60 millisecondi: avvio del programma,
-corsa fino al punto scelto (con due fermate per ogni passaggio
-sull'istruzione bersaglio, che nei cicli possono essere migliaia), resto
-dell'esecuzione.
+1. **avvio**: `starti` avvia il programma (con l'output rediretto su due
+   file) e lo ferma alla prima istruzione; la differenza tra l'indirizzo di
+   `main` prima e dopo l'avvio è la base a cui è stato caricato;
+2. **fermata**: un breakpoint sull'istruzione scelta, con *ignore count*
+   *k*-1: gdb lo ignora per *k*-1 volte e ferma il programma subito prima
+   della *k*-esima esecuzione. Se il programma termina prima, l'esperimento è
+   "non iniettato" e viene scartato. Succede di rado, per un dettaglio di
+   valgrind: le poche istruzioni con cui il programma salta a una funzione
+   della libreria C (la *PLT*) vengono contate insieme all'istruzione `call`
+   che la chiama, quindi per quelle `call` il profilo indica qualche
+   esecuzione in più di quelle reali. Gli esperimenti rimasti sono comunque
+   distribuiti in modo uniforme su tutte le esecuzioni reali;
+3. **guasto**:
+   - bit-flip: legge il registro, inverte il bit con uno XOR e lo riscrive
+     (`set $rax = ...`);
+   - salto invertito: esegue il salto con `stepi`, guarda dove è andato e
+     sposta il *program counter* (`$pc`) sull'altro successore: la
+     destinazione del salto se il salto non è stato preso, l'istruzione
+     successiva se è stato preso;
+4. **prosecuzione**: toglie il breakpoint e lascia correre il programma. Un
+   piccolo processo di guardia (un `sleep` seguito da `kill -KILL`) uccide il
+   programma se non termina entro il tempo limite: è un *hang*;
+5. **risultato**: stampa una riga `FI-RESULT` con tre informazioni: se il
+   guasto è stato iniettato, il codice d'uscita e l'eventuale segnale che ha
+   fermato il programma (per esempio `SIGSEGV`).
 
-## 9.5 Cosa l'iniettore non fa
+## 9.4 Classificare l'esito
 
-- inietta solo mentre il programma esegue **il proprio codice**, mai nella
+`campaign.py` legge la riga `FI-RESULT` e i due file di output e classifica
+l'esperimento, in quest'ordine:
+
+- `hang` se il programma è stato ucciso dal processo di guardia: dopo il
+  guasto non è terminato entro 20 volte il suo tempo normale, e comunque
+  almeno 1 secondo;
+- `crash` se è stato fermato da un altro segnale;
+- `detected_data` se su stderr c'è `FAULT_DETECTED: DataCorruption`;
+- `detected_cfc` se su stderr c'è `FAULT_DETECTED: SigMismatch`;
+- `masked` se l'output è identico a quello di riferimento e il codice
+  d'uscita è 0;
+- `sdc` altrimenti (output diverso, oppure il programma stesso si è accorto
+  dell'errore e ha stampato `FAIL`).
+
+Ogni esperimento diventa una riga di `raw.csv.gz`. Per esempio, dai risultati
+di `aes128` con EDDI:
+
+```text
+⟦csv_example⟧
+```
+
+⟦csv_comment⟧
+
+## 9.5 Quanto costa un esperimento
+
+⟦exp_time⟧ La maggior parte del tempo è di gdb: l'avvio (circa un decimo di
+secondo) e le fermate sul breakpoint, perché per ignorare i primi *k*-1
+passaggi gdb ferma comunque il programma ogni volta e lo fa ripartire
+(circa un decimo di millisecondo per passaggio, che nei cicli sono migliaia).
+Gli esperimenti sono indipendenti, quindi `campaign.py` ne esegue quattro
+alla volta, uno per core.
+
+## 9.6 Cosa non facciamo
+
+- iniettiamo solo mentre il programma esegue **il proprio codice**, mai nella
   libreria C (che ASPIS non protegge);
-- non tocca i registri **SSE** (`xmm0`...), dove stanno i valori in virgola
-  mobile: per `fft` e `pid_control` i guasti nei calcoli in virgola mobile
-  sono rappresentati solo quando colpiscono indirizzi, indici o interi;
+- non tocchiamo i registri **SSE** (`xmm0`...), dove stanno i valori in
+  virgola mobile: per `fft` e `pid_control` i guasti nei calcoli in virgola
+  mobile sono rappresentati solo quando colpiscono indirizzi, indici o
+  interi;
 - un solo guasto per esecuzione, niente guasti in memoria.

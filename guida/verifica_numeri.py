@@ -7,7 +7,7 @@ Uso:
     python3 guida/verifica_numeri.py ASPIS-Project [cartella della campagna]
 
 Con la sola cartella del progetto usa i file di results/ e benchmarks/. Se si
-indica anche la cartella scritta da campaign.py (quella con build/), ricalcola
+indica anche la cartella di lavoro della campagna (quella con build/), ricalcola
 anche le quote dei salti dei controlli (check_jumps.py) e il punto delle SDC di
 RASM (sdc_sites.py), che hanno bisogno degli eseguibili.
 """
@@ -109,9 +109,9 @@ def main():
     tot = sum(crashes.values())
     print("== crash della baseline con i bit-flip nei registri: %d; " % tot +
           ", ".join("%s %d (%s%%)" % (k, v, pct(v, tot, 0)) for k, v in crashes.most_common(4)))
-    times = sorted(int(r["time_us"]) for r in raw)
-    print("== durata di un esperimento: media %.1f ms, mediana %.1f ms" % (
-        sum(times) / len(times) / 1000, times[len(times) // 2] / 1000))
+    times = sorted(int(r["time_ms"]) for r in raw)
+    print("== durata di un esperimento (con gdb): media %.0f ms, mediana %d ms" % (
+        sum(times) / len(times), times[len(times) // 2]))
     print("== righe delle applicazioni: " + ", ".join(
         "%s %d" % (a, sum(1 for _ in open(os.path.join(proj, "benchmarks", a + ".c")))) for a in APPS))
 

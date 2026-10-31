@@ -36,8 +36,9 @@ domande per loro.
 **2. Tre obiettivi.** La proposta chiedeva di proteggere applicazioni C con
 ASPIS, di verificare la protezione con la fault injection e di integrare le
 applicazioni in ASPIS come test di regressione. Per ognuno, una riga di
-risultato: 55 combinazioni su 55 per ogni applicazione; 48.000 esperimenti
-più 8000; due patch e un bug report, non ancora inviati.
+risultato: 55 combinazioni su 55 per ogni applicazione; 24.000 esperimenti
+più 4000, con i guasti iniettati da gdb; due patch e un bug report, non
+ancora inviati.
 
 ## 16.2 Parte 2: le applicazioni e i test (slide 3-6)
 
@@ -73,16 +74,19 @@ piuttosto che toccare EDDI da soli (capitolo 8.2).
 
 ## 16.3 Parte 3: la fault injection (slide 7-13)
 
-**7. L'iniettore.** `fi.c`, basato su `ptrace`: una golden run passo-passo che
-conta le esecuzioni di ogni istruzione, poi ogni esperimento si ferma in un
-istante a caso con un breakpoint `int3`, inietta il guasto (un bit di un
-registro o un salto invertito) e classifica l'esito confrontando l'output con
-quello di riferimento. Ricordare la definizione di SDC: un risultato
-sbagliato senza nessun segnale d'errore (capitolo 9).
+**7. L'iniezione con gdb.** Non abbiamo scritto un iniettore: valgrind
+(`callgrind`) conta le esecuzioni di ogni istruzione nella golden run, poi in
+ogni esperimento gdb ferma il programma in un istante a caso (un breakpoint
+con *ignore count*), lo script inietta il guasto (un bit di un registro con
+`set`, o il salto mandato dall'altra parte cambiando `$pc`) e la campagna
+classifica l'esito confrontando l'output con quello di riferimento. Ricordare
+la definizione di SDC: un risultato sbagliato senza nessun segnale d'errore
+(capitolo 9). Se chiedono perché non un iniettore nostro: gdb fa già tutto,
+ed è più facile da verificare; il prezzo è il tempo.
 
-**8. La campagna.** 4 applicazioni × 6 configurazioni × 2 modelli × 1000 =
-48.000 esperimenti, più 8000 di EDDI+RASM senza la correzione. Semi fissi,
-ASLR disattivato, intervalli di Wilson al 95%, circa 20 minuti su 4 core
+**8. La campagna.** 4 applicazioni × 6 configurazioni × 2 modelli × 500 =
+24.000 esperimenti, più 4000 di EDDI+RASM senza la correzione. Semi fissi,
+ASLR disattivato, intervalli di Wilson al 95%, ⟦campaign_time_short⟧ su 4 core
 (capitolo 10).
 
 **9. Il costo.** EDDI esegue 3,74 volte le istruzioni e ha il codice 9,27

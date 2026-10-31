@@ -41,8 +41,9 @@ discuterne durante la chiamata. Per ora **non è stato inviato nulla**.
 # 13. Rifare tutto da zero
 
 Requisiti: Linux x86-64 (anche WSL2 o una macchina virtuale), Python 3.11 o
-successivo con `pytest`, `pytest-timeout` e `matplotlib`, CMake, Ninja, gcc;
-per rigenerare il PDF del report anche `pandoc` e Node.js con Playwright.
+successivo con `pytest`, `pytest-timeout` e `matplotlib`, CMake, Ninja, gcc,
+gdb e valgrind; per rigenerare il PDF del report anche `pandoc` e Node.js con
+Playwright.
 
 ```bash
 # 1. LLVM 21.1.8 già compilato (circa 2 GB da scaricare, 11 GB estratto)
@@ -64,12 +65,9 @@ cd testing && pytest test.py -v > harness_fixed.log && cd ..
     -o aes128 --build-dir /tmp/aes --no-cleanup && ./aes128
 less /tmp/aes/out.ll                           # l'IR finale
 
-# 5. la campagna (circa 20 minuti con 4 core)
-gcc -O2 -o <dir>/fi <repo>/ASPIS-Project/fault_injection/injector/fi.c
+# 5. la campagna (⟦campaign_time_short⟧ con 4 core); scrive i risultati in results/
 #    adattare i percorsi in fault_injection/campaign.toml, poi:
 python3 <repo>/ASPIS-Project/fault_injection/campaign.py <repo>/ASPIS-Project/fault_injection/campaign.toml
-python3 <repo>/ASPIS-Project/fault_injection/export.py <output della campagna> \
-    <repo>/ASPIS-Project/results/fault_injection
 
 # 6. tabelle, figure e report
 cd <repo>/ASPIS-Project
@@ -83,7 +81,8 @@ python3 report/build.py
 
 Per la parte "prima della correzione di RASM" serve un secondo ASPIS, senza
 patch (`b66a090` così com'è), con cui lanciare la campagna con la sola
-configurazione EDDI+RASM (le cartelle di output devono essere diverse). Per
+configurazione EDDI+RASM (con `work` e `results` diversi:
+`results/fault_injection/before_fix`). Per
 il log dei test su `master` si lancia `pytest` sull'ASPIS senza patch,
 aggiungendo le nostre voci con `--tests-file config/tests.toml
 <repo>/ASPIS-Project/aspis-integration/flc_tests.toml`; per quello della
@@ -92,7 +91,7 @@ prima versione delle applicazioni serve il codice di quella versione (commit
 
 Le golden run e gli esperimenti sono deterministici (stessi semi, indirizzi
 fissi): rifacendo la campagna con gli stessi eseguibili si ottengono gli
-stessi numeri. Ricompilando le applicazioni, però, l'eseguibile prodotto da
+stessi esperimenti e gli stessi esiti. Ricompilando le applicazioni, però, l'eseguibile prodotto da
 EDDI può cambiare un poco, perché EDDI visita le istruzioni in un ordine che
 dipende dagli indirizzi di memoria del compilatore (usa un `std::set` di
 puntatori); quindi anche i numeri possono variare di poco.
@@ -110,9 +109,8 @@ Tutti i percorsi sono relativi a `ASPIS-Project/`.
 | `aspis-integration/flc_tests.toml` | le voci dei test aggiunte a `tests.toml` |
 | `aspis-integration/bug_report.md` | il bug report di EDDI (capitolo 8.2) |
 | `aspis-integration/reproducers/string_literal.c` | il riproduttore del bug di EDDI; `handlers.h` contiene i due gestori d'errore |
-| `fault_injection/injector/fi.c` | l'iniettore (capitolo 9) |
-| `fault_injection/campaign.py`, `campaign.toml` | la campagna (capitolo 10) |
-| `fault_injection/export.py` | copia i risultati nel repository e crea `raw.csv.gz` |
+| `fault_injection/gdb_inject.py` | un esperimento, eseguito dentro gdb (capitolo 9) |
+| `fault_injection/campaign.py`, `campaign.toml` | la campagna: compilazioni, golden run con valgrind, esperimenti, risultati (capitolo 10) |
 | `fault_injection/analyze.py` | tabelle e figure del report |
 | `fault_injection/sdc_sites.py` | dove sono avvenute le SDC (capitolo 8.3) |
 | `fault_injection/check_jumps.py` | quanti dei salti eseguiti appartengono ai controlli (capitolo 11.3) |
@@ -121,7 +119,7 @@ Tutti i percorsi sono relativi a `ASPIS-Project/`.
 | `results/compatibility/harness_master.log.gz`, `harness_fixed.log.gz` | i log dei test con la versione finale, senza e con le patch |
 | `results/fault_injection/metrics.csv` | costo: dimensione, controlli, istruzioni eseguite |
 | `results/fault_injection/outcomes.csv` | esiti per applicazione, configurazione, modello |
-| `results/fault_injection/raw.csv.gz` | i 48.000 esperimenti, uno per riga |
+| `results/fault_injection/raw.csv.gz` | i 24.000 esperimenti, uno per riga |
 | `results/fault_injection/before_fix/` | gli stessi file per EDDI+RASM senza la correzione di RASM |
 | `report/report.md` | il testo del report (Markdown, con i segnaposto `{{table:...}}` per le tabelle) |
 | `report/build.py` | genera `report.html` e `report.pdf` (pandoc + Chromium) e la versione web |
@@ -136,13 +134,15 @@ Project Proposals AY 202627.txt`), le indicazioni dei supervisori
 
 # 15. Cosa è stato tolto (le versioni precedenti)
 
-Il progetto è passato per tre versioni, tutte nella storia del repository:
+Il progetto è passato per quattro versioni, tutte nella storia del
+repository:
 
 | Versione | Commit | Cosa conteneva |
 |---|---|---|
 | prima (completa) | `e1d7e8b` | 22 programmi, 23 bug corretti, campagna di 240.900 esperimenti, report di 19 pagine |
-| seconda | `7074cd6` | le quattro applicazioni attuali (nella prima versione delle stampe), tre bug corretti: due in EDDI e quello di RASM |
-| terza (attuale) | `main` | le applicazioni che evitano il bug di EDDI, la sola correzione di RASM |
+| seconda | `7074cd6` | le quattro applicazioni attuali (nella prima versione delle stampe), tre bug corretti: due in EDDI e quello di RASM, un iniettore scritto da noi |
+| terza | `0609127` | le applicazioni che evitano il bug di EDDI, la sola correzione di RASM, ancora l'iniettore scritto da noi |
+| quarta (attuale) | `main` | come la terza, ma i guasti si iniettano con gdb e valgrind |
 
 Per vedere una versione precedente:
 
@@ -178,6 +178,16 @@ o su GitHub, aprendo il commit e scegliendo "Browse files".
 - una **campagna di 240.900 esperimenti**: 8 applicazioni, 11 configurazioni
   (anche sEDDI, FDSC, inter-RASM, RACFED, EDDI+RACFED), 3 modelli di guasto, e
   un'analisi del rapporto costo/beneficio (*mean work to failure*).
+
+**La seconda e la terza versione** avevano un iniettore scritto da noi,
+`fault_injection/injector/fi.c`: circa 560 righe di C che usavano direttamente
+`ptrace`, la chiamata di sistema dei debugger, per contare le istruzioni
+eseguendo il programma un passo alla volta, fermarlo con un breakpoint
+scritto a mano nel codice (l'istruzione `int3`) e decodificare i salti
+condizionali dai loro byte. Era più veloce (circa 60 ms per esperimento,
+48.000 esperimenti in circa 20 minuti), ma era la parte più tecnica del
+progetto. La versione attuale fa le stesse cose con gdb e valgrind, che lo
+fanno per noi.
 
 **La seconda versione** correggeva, oltre a RASM, due bug di EDDI: quello
 della copia dopo le chiamate di libreria (che ora evitiamo, capitolo 8.2) e

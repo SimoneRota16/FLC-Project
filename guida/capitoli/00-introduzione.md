@@ -22,8 +22,9 @@ La guida è divisa in tre parti:
   compilatore e com'è fatto LLVM, cosa sono i guasti transitori e come si
   proteggono i programmi via software, quali tecniche implementa ASPIS.
 - **Parte II, il lavoro fatto** (capitoli 5-11): come si usa ASPIS, le
-  quattro applicazioni, i test, i due bug trovati in ASPIS, l'iniettore di
-  guasti, la campagna di fault injection e i suoi risultati.
+  quattro applicazioni, i test, i due bug trovati in ASPIS, come iniettiamo
+  i guasti con gdb e valgrind, la campagna di fault injection e i suoi
+  risultati.
 - **Parte III, pratica ed esame** (capitoli 12-18): come integrare il lavoro
   in ASPIS, come rifare tutti gli esperimenti, la mappa dei file, cosa è
   stato tolto dalle versioni precedenti, cosa dire slide per slide nella
@@ -83,13 +84,13 @@ valutazione.
   combinazioni. Il secondo, in RASM, è stato scoperto grazie alla fault
   injection e lo abbiamo corretto cambiando una riga; con la correzione i 48
   test che ASPIS aveva già danno gli stessi risultati di prima.
-- **Un iniettore di guasti** scritto in C (`fault_injection/injector/fi.c`)
-  che, usando la chiamata di sistema `ptrace` (quella dei debugger), ferma il
-  programma in un istante casuale e inverte un bit di un registro oppure fa
-  andare un salto condizionale dalla parte sbagliata.
-- **Una campagna di fault injection** di 56.000 esperimenti: 4 applicazioni,
-  6 configurazioni di protezione, 2 modelli di guasto, 1000 guasti per
-  combinazione, più 8000 esperimenti per misurare l'effetto del bug di RASM.
+- **L'iniezione dei guasti con gdb**, il debugger: uno script di poche
+  decine di righe ferma il programma in un istante casuale e inverte un bit
+  di un registro oppure fa andare un salto condizionale dalla parte
+  sbagliata; valgrind conta le istruzioni eseguite, per scegliere l'istante.
+- **Una campagna di fault injection** di 28.000 esperimenti: 4 applicazioni,
+  6 configurazioni di protezione, 2 modelli di guasto, 500 guasti per
+  combinazione, più 4000 esperimenti per misurare l'effetto del bug di RASM.
 - **Due patch** pronte per il repository ufficiale di ASPIS (la correzione di
   RASM e l'aggiunta dei test) e il bug report di EDDI, non ancora inviati.
 - **Il report** in inglese, con la dichiarazione sull'uso dell'AI.
@@ -116,7 +117,7 @@ I numeri precisi sono nel capitolo 11.
 |---|---|
 | `ASPIS-Project/benchmarks/` | le quattro applicazioni |
 | `ASPIS-Project/aspis-integration/` | le due patch per ASPIS, le voci dei test, il bug report di EDDI e il suo riproduttore |
-| `ASPIS-Project/fault_injection/` | l'iniettore (`injector/fi.c`), la campagna (`campaign.py`, `campaign.toml`), l'analisi (`analyze.py`, `export.py`, `sdc_sites.py`, `check_jumps.py`) |
+| `ASPIS-Project/fault_injection/` | l'esperimento con gdb (`gdb_inject.py`), la campagna (`campaign.py`, `campaign.toml`), l'analisi (`analyze.py`, `sdc_sites.py`, `check_jumps.py`) |
 | `ASPIS-Project/results/` | i log dei test e i risultati della campagna |
 | `ASPIS-Project/report/` | il report (`report.md`, `report.pdf`) e lo script che lo genera |
 | `guida/` | questa guida (fuori dalla cartella del progetto) |
@@ -128,8 +129,10 @@ La prima versione del progetto era molto più grande: 22 programmi di test,
 240.900 esperimenti. Era troppo per un progetto che vale il 30% di un esame
 da 5 CFU. Una seconda versione aveva già le quattro applicazioni attuali, ma
 correggeva ancora due bug dentro EDDI, con modifiche al codice C++ di LLVM
-difficili da studiare e da difendere all'orale. La versione attuale tiene
-solo la correzione di RASM, che è una riga, ed evita il bug di EDDI nelle
-applicazioni. Le versioni precedenti non sono andate perse: sono nella
-storia di git, ai commit `e1d7e8b` e `7074cd6`. Il capitolo 15 riassume cosa
-contenevano.
+difficili da studiare e da difendere all'orale. Una terza versione teneva
+solo la correzione di RASM, che è una riga, ed evitava il bug di EDDI nelle
+applicazioni, ma usava ancora un iniettore di guasti scritto da noi in C,
+basato direttamente su `ptrace`. La versione attuale inietta i guasti con
+gdb e valgrind, strumenti che si usano già nei corsi. Le versioni precedenti
+non sono andate perse: sono nella storia di git, ai commit `e1d7e8b`,
+`7074cd6` e `0609127`. Il capitolo 15 riassume cosa contenevano.

@@ -26,7 +26,7 @@ caratteristiche del C mette alla prova.
 
 ## 6.2 `aes128.c`: cifratura AES-128
 
-329 righe, 645.668 istruzioni eseguite. Implementa l'algoritmo di
+329 righe, 645.656 istruzioni eseguite. Implementa l'algoritmo di
 cifratura a blocchi AES con chiave di 128 bit (standard FIPS-197):
 
 - calcola all'avvio le tabelle `sbox` e `inv_sbox` (la sostituzione di byte
@@ -48,7 +48,7 @@ letterale.
 
 ## 6.3 `fft.c`: trasformata di Fourier
 
-186 righe, 367.759 istruzioni. Calcola la FFT radix-2 (algoritmo di
+186 righe, 367.747 istruzioni. Calcola la FFT radix-2 (algoritmo di
 Cooley-Tukey iterativo) di un segnale di 256 campioni complessi in doppia
 precisione:
 
@@ -65,7 +65,7 @@ Usa la libreria matematica (`sin`, `cos`, `sqrt`), e infatti va compilato con
 
 ## 6.4 `huffman.c`: compressione di Huffman
 
-225 righe, 170.974 istruzioni. Comprime e decomprime un testo fisso con la
+225 righe, 170.962 istruzioni. Comprime e decomprime un testo fisso con la
 codifica di Huffman:
 
 - conta le frequenze dei caratteri;
@@ -83,7 +83,7 @@ cicli del heap hanno uscite che dipendono dai dati: tanti salti condizionali
 
 ## 6.5 `pid_control.c`: controllore PID
 
-159 righe, 477.391 istruzioni. Simula per 2000 passi di 10 ms un motore in
+159 righe, 477.379 istruzioni. Simula per 2000 passi di 10 ms un motore in
 corrente continua (modello del primo ordine) controllato da un **PID**:
 
 - il riferimento di velocità cambia a gradini (10, 25, 5, 15 rad/s);

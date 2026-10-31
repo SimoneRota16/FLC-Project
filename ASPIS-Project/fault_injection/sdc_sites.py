@@ -4,10 +4,10 @@ instructions hit by the faults that ended in an SDC, how many times, and, for
 a conditional jump, the first instruction of its two successors.
 
 Usage:
-    sdc_sites.py <raw.csv.gz> <campaign output dir> <application> <config> [model]
+    sdc_sites.py <raw.csv.gz> <campaign work dir> <application> <config> [model]
 
-<campaign output dir> is the directory written by campaign.py, which contains
-the binaries (build/<application>/<config>/prog). Needs readelf and objdump.
+<campaign work dir> is the directory written by campaign.py, which contains
+the binaries (build/<application>/<config>/prog). Needs objdump.
 """
 import collections
 import csv
@@ -35,24 +35,14 @@ def disassemble(prog):
     return insn, func, dict(zip(order, order[1:]))
 
 
-def text_base(prog):
-    """Address of the executable segment: pc_off in the results is relative to it."""
-    loads = [line.split() for line in subprocess.run(["readelf", "-lW", prog], capture_output=True,
-                                                     text=True).stdout.splitlines()
-             if line.strip().startswith("LOAD") and "R E" in line]
-    return int(loads[0][2], 16)
-
-
 def main():
     if len(sys.argv) not in (5, 6):
         sys.exit(__doc__)
-    raw, campaign, app, conf = sys.argv[1:5]
+    raw, work, app, conf = sys.argv[1:5]
     model = sys.argv[5] if len(sys.argv) == 6 else "branch"
-    prog = "%s/build/%s/%s/prog" % (campaign, app, conf)
-    base = text_base(prog)
-    insn, func, nxt = disassemble(prog)
+    insn, func, nxt = disassemble("%s/build/%s/%s/prog" % (work, app, conf))
     with gzip.open(raw, "rt") as f:
-        sites = collections.Counter(int(r["pc_off"], 16) + base for r in csv.DictReader(f)
+        sites = collections.Counter(int(r["address"], 16) for r in csv.DictReader(f)
                                     if r["application"] == app and r["config"] == conf
                                     and r["model"] == model and r["outcome"] == "sdc")
     print("%s %s %s: %d SDC at %d instructions" % (app, conf, model, sum(sites.values()), len(sites)))

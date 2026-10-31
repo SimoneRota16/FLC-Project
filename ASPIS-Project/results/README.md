@@ -1,9 +1,10 @@
 # Results
 
 All the experiments were run with LLVM 21.1.8 on x86-64 Linux (a 4-core
-virtual machine), with ASPIS `b66a090` ("master") and with the same commit
-plus the two patches of `../aspis-integration/patches` ("fixed": the RASM fix
-and the test entries).
+virtual machine; gdb 15.1 and valgrind 3.22 for the fault injection), with
+ASPIS `b66a090` ("master") and with the same commit plus the two patches of
+`../aspis-integration/patches` ("fixed": the RASM fix and the test
+entries).
 
 ## `compatibility/`
 
@@ -21,17 +22,18 @@ Section 3 of the report.
 
 ## `fault_injection/`
 
-Output of `../fault_injection/campaign.py`, exported with `export.py`:
+Written by `../fault_injection/campaign.py`:
 
 - `metrics.csv`: one row per application and configuration: size of
   `.text`, consistency checks inserted by EDDI, instructions executed in the
-  program's own code in the golden run;
+  program's own code in the golden run (counted by valgrind);
 - `outcomes.csv`: one row per application, configuration and fault model:
   number of experiments per outcome, SDC rate with its 95% Wilson interval;
-- `raw.csv.gz`: one row per experiment: application, configuration, chunk,
-  then the columns printed by `fi inject` (`id`, `model`, `pc_off` offset of
-  the target instruction in the text segment, `occurrence`, `target`
-  register or condition code, `bit`, `injected`, `outcome`, `exit` status,
-  `signal`, `time_us`);
+- `raw.csv.gz`: one row per experiment: `application`, `config`, `model`,
+  `id`, `address` of the target instruction (as printed by `objdump`),
+  `occurrence` (the fault is injected before its *k*-th execution), `target`
+  register (`-` for an inverted branch), `bit` (-1 for an inverted branch),
+  `outcome`, `exit` status (-1 if killed by a signal), `signal`, `time_ms`
+  (duration of the experiment with gdb);
 - `before_fix/`: the same files for EDDI+RASM compiled with ASPIS without
   patch 0001 (the RASM bug of the report).

@@ -23,9 +23,10 @@ the ASPIS main branch for regression testing.
   and FDSC, the techniques that duplicate the whole program, made all four
   crash. We found the **bug in EDDI** behind the crashes, isolated it in a
   five-line program and avoided it in our code. All the 220 builds now pass.
-- We wrote a **fault injector** based on `ptrace` and ran **56,000
-  experiments** that flip a bit in a register or invert a conditional jump,
-  on six hardening configurations.
+- We injected faults with **gdb**, driven by a short script, after counting
+  the executed instructions with valgrind, and ran **28,000 experiments**
+  that flip a bit in a register or invert a conditional jump, on six
+  hardening configurations.
 - EDDI reduces the silent data corruptions (SDCs) caused by register
   bit-flips from 1.43% to 0.20% of the faults, at 3.7 times the executed
   instructions. RASM detects 99.1% of the inverted branches, CFCSS only
@@ -150,14 +151,14 @@ the embedded systems targeted by SIHFT. They follow the same rules:
 
 | Application | What it does | Lines | Instructions |
 |---|---|---:|---:|
-| `aes128` | AES-128 encryption (FIPS-197): known-answer test, encryption and decryption of 64 bytes in CBC mode; the S-boxes are computed at start-up | 329 | 645,668 |
-| `fft` | radix-2 FFT of 256 points: dominant frequencies, Parseval's theorem, inverse transform | 186 | 367,759 |
-| `huffman` | Huffman compression and decompression of a text, with a binary min-heap | 225 | 170,974 |
-| `pid_control` | closed-loop speed control of a DC motor with a PID controller, 2000 steps | 159 | 477,391 |
+| `aes128` | AES-128 encryption (FIPS-197): known-answer test, encryption and decryption of 64 bytes in CBC mode; the S-boxes are computed at start-up | 329 | 645,656 |
+| `fft` | radix-2 FFT of 256 points: dominant frequencies, Parseval's theorem, inverse transform | 186 | 367,747 |
+| `huffman` | Huffman compression and decompression of a text, with a binary min-heap | 225 | 170,962 |
+| `pid_control` | closed-loop speed control of a DC motor with a PID controller, 2000 steps | 159 | 477,379 |
 
 : The applications. *Instructions*: x86-64 instructions executed in the
 program's own code (excluding the C library) by the unprotected program,
-measured by the profiler of Section 4.
+counted by valgrind (Section 4.2).
 
 # 3. Hardening the applications
 
@@ -238,8 +239,9 @@ The failure does not depend on ASPIS.
 We emulate a single transient fault in the processor while the program runs
 its own code (never in the C library or in the dynamic loader, which ASPIS
 does not harden). An experiment picks a *dynamic* instruction uniformly at
-random, i.e. a random instant of the execution, stops the program right
-before it and injects one fault:
+random, i.e. a random instant of the execution: an instruction with a
+probability proportional to the times it is executed, then one of its
+executions. It stops the program right before it and injects one fault:
 
 - **register bit-flip** (`reg`): one random bit of one of the 16 general
   purpose registers (`rax` ... `r15`) is inverted;
@@ -249,42 +251,46 @@ before it and injects one fault:
   the branch unit, and the classic error that control-flow checking should
   detect.
 
-## 4.2 The injector
+## 4.2 Injecting the faults with gdb
 
-`fault_injection/injector/fi.c` (about 550 lines of C) uses `ptrace`, the
-system call of debuggers, and has two commands:
+We did not write an injector: the experiments use two standard tools, gdb and
+valgrind, driven by two short Python scripts.
 
-- `fi profile` runs the program step by step (`PTRACE_SINGLESTEP`), counts
-  how many times each instruction runs and recognises the conditional jumps.
-  It also saves the output of this fault-free run (*golden run*);
-- `fi inject` runs N experiments. For each one it draws an instruction and
-  one of its executions (the *k*-th) from the profile, starts the program
-  with address randomisation disabled (so that the addresses are the same in
-  every run), and stops it right before the *k*-th execution with a software
-  breakpoint (an `int3` instruction written at that address, counting the
-  hits). Then it modifies the registers, lets the program continue without
-  tracing and waits for it to end.
+- **Golden run.** Each program runs once without faults under valgrind
+  (`callgrind`), which counts how many times each instruction of the program
+  is executed; `objdump` tells which ones are conditional jumps. The output of
+  a normal run is the reference (the *golden output*).
+- **Experiment.** `fault_injection/gdb_inject.py` (about 80 lines, half of
+  them comments) runs inside gdb. It receives an instruction and one of its
+  executions, the *k*-th, drawn from the counts of the golden run, and puts a
+  breakpoint on that instruction with an *ignore count* of *k*-1, so that gdb
+  stops the program right before the *k*-th execution (gdb disables address
+  randomisation, so the addresses are the same in every run). For a register
+  bit-flip it changes the register (`set $rax = ...`); for an inverted
+  branch it executes the jump (`stepi`), sees where it went and moves the
+  program counter to the other successor. Then the program continues, and a
+  watchdog kills it if it does not end in time.
 
-Each experiment is classified, in this order, as: *hang* if the program did
-not end within 20 times its normal run time (at least 300 ms); *crash* if it
-was killed by a signal; *detected (data)* or *detected (CFC)* if one of the
-two handlers reported the fault; *masked* if its output and exit status are
-the same as in the golden run; *SDC* otherwise, which includes a wrong output
-and the program's own check printing `FAIL`.
+Each experiment is classified, in this order, as: *hang* if after the fault
+the program did not end within 20 times its normal run time (at least 1 s);
+*crash* if it was killed by a signal; *detected (data)* or *detected (CFC)*
+if one of the two handlers reported the fault; *masked* if its output and exit
+status are the same as in the golden run; *SDC* otherwise, which includes a
+wrong output and the program's own check printing `FAIL`.
 
 ## 4.3 The campaign
 
 `fault_injection/campaign.py` builds each application with each
-configuration, records its size, profiles it and runs the injections in
-parallel. We used six configurations: the unprotected `baseline` (the same
-`aspis.sh` pipeline without transformations), EDDI, CFCSS, RASM, and EDDI
-combined with CFCSS and with RASM, built with ASPIS `b66a090` plus our fix of
-RASM. For each application, configuration and fault model we injected 1000
-faults, in chunks of 100 with seeds derived from the names: **48,000
-experiments**. To measure the effect of the RASM bug (Section 5.4), EDDI+RASM
-was also run with ASPIS `b66a090` without the fix: 8,000 more experiments.
-Each proportion is given with its 95% confidence interval (Wilson score
-interval).
+configuration, records its size, does the golden run and runs the
+experiments, four at a time. We used six configurations: the unprotected
+`baseline` (the same `aspis.sh` pipeline without transformations), EDDI,
+CFCSS, RASM, and EDDI combined with CFCSS and with RASM, built with ASPIS
+`b66a090` plus our fix of RASM. For each application, configuration and fault
+model we injected 500 faults, drawn with a seed derived from the names:
+**24,000 experiments**. To measure the effect of the RASM bug (Section 5.4),
+EDDI+RASM was also run with ASPIS `b66a090` without the fix: 4,000 more
+experiments. Each proportion is given with its 95% confidence interval
+(Wilson score interval).
 
 # 5. Results
 
@@ -458,8 +464,7 @@ whether you have used LLMs and for what purpose". This project was carried
 out with extensive use of an LLM-based coding agent, Claude (Anthropic),
 through Claude Code. The agent was used for:
 
-- writing the applications, the fault injector and the campaign and analysis
-  scripts;
+- writing the applications and the fault-injection and analysis scripts;
 - running the experiments: building LLVM and ASPIS, the test harness, the
   fault-injection campaign;
 - debugging ASPIS: isolating the failures, writing the reproducer, finding
@@ -476,9 +481,9 @@ report.
 |---|---|
 | `benchmarks/` | the four applications |
 | `aspis-integration/` | the patches for ASPIS, the test entries, the bug report and its reproducer |
-| `fault_injection/injector/fi.c` | the fault injector |
-| `fault_injection/campaign.py`, `campaign.toml` | the campaign |
-| `fault_injection/analyze.py`, `export.py` | tables and figures; copy of the results into the repository |
+| `fault_injection/gdb_inject.py` | one experiment, run inside gdb |
+| `fault_injection/campaign.py`, `campaign.toml` | the campaign: builds, golden runs with valgrind, experiments, results |
+| `fault_injection/analyze.py` | tables and figures |
 | `fault_injection/sdc_sites.py`, `check_jumps.py` | where the SDCs happened, and how many executed jumps belong to checks (Sections 5.3, 5.4) |
 | `results/` | logs of the harness, results of the campaign |
 | `report/` | this report (`report.md`, built by `build.py`) |
@@ -492,10 +497,8 @@ git am <repo>/aspis-integration/patches/*.patch
 cmake -B build -G Ninja -DLLVM_DIR=<llvm>/lib/cmake/llvm && cmake --build build
 # 2. the official harness (llvm_bin in testing/config/llvm.toml)
 cd testing && pytest test.py -v > harness.log
-# 3. fault injection (paths at the top of campaign.toml)
-gcc -O2 -o fi <repo>/fault_injection/injector/fi.c
+# 3. fault injection (needs gdb and valgrind; paths at the top of campaign.toml)
 python3 <repo>/fault_injection/campaign.py <repo>/fault_injection/campaign.toml
-python3 <repo>/fault_injection/export.py <campaign output> <repo>/results/fault_injection
 # 4. tables, figures and this report
 python3 <repo>/fault_injection/analyze.py --campaign <repo>/results/fault_injection \
     --before <repo>/results/fault_injection/before_fix --out <repo>/report \

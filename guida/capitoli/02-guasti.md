@@ -100,11 +100,11 @@ esegue il programma molte volte, ogni volta con un guasto artificiale in un
 punto scelto a caso, e si contano gli esiti. Il guasto si può iniettare
 simulando l'hardware, con apparecchiature fisiche (fasci di particelle,
 laser), oppure via software, modificando lo stato del programma mentre è in
-esecuzione. Noi usiamo l'ultima strada: un programma che, come un debugger,
-ferma il programma sotto test e ne modifica i registri.
+esecuzione. Noi usiamo l'ultima strada: un debugger (gdb) ferma il
+programma sotto test e ne modifica i registri.
 
 Siccome i guasti sono scelti a caso, ogni percentuale misurata è una **stima**,
-e va accompagnata da un **intervallo di confidenza**: con 4000 guasti una
-percentuale dello 0,1% significa 4 casi, e la vera probabilità potrebbe
+e va accompagnata da un **intervallo di confidenza**: con 2000 guasti una
+percentuale dello 0,1% significa 2 casi, e la vera probabilità potrebbe
 essere un po' più alta o più bassa. Il capitolo 10 spiega come si calcola
 l'intervallo.

@@ -212,8 +212,8 @@ guardando come il puntatore viene usato.
 
 ## 2.7 Un minimo di x86-64
 
-L'iniettore di guasti lavora sul programma già compilato, quindi serve
-qualche nozione di x86-64:
+I guasti si iniettano nel programma già compilato, quindi serve qualche
+nozione di x86-64:
 
 - **16 registri generali** a 64 bit: `rax`, `rbx`, `rcx`, `rdx`, `rsi`, `rdi`,
   `rbp`, `rsp`, `r8`...`r15`. `rsp` è il puntatore alla cima dello stack,

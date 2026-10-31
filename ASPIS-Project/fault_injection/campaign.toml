@@ -1,19 +1,18 @@
-# Fault-injection campaign of the project (see the report, Section 5).
+# Fault-injection campaign of the project (see the report, Section 4).
 # Edit the paths of this section for your machine.
 
 [campaign]
-root = ".."                                  # sources are relative to the project root
-output = "~/aspis-project/campaign"          # build products, golden runs, raw results
-aspis = "~/aspis-project/ASPIS"              # ASPIS master + the patches of aspis-integration/
+root = ".."                                   # application sources are relative to the project root
+work = "~/aspis-project/campaign"             # builds, golden runs, results of each group of experiments
+results = "../results/fault_injection"        # metrics.csv, outcomes.csv, raw.csv.gz
+aspis = "~/aspis-project/ASPIS"               # ASPIS b66a090 + the patches of aspis-integration/
 llvm_bin = "~/aspis-project/toolchain/LLVM-21.1.8-Linux-X64/bin"
-fi = "~/aspis-project/fi"                    # compiled fault_injection/injector/fi.c
-tmp = "/dev/shm/aspis-fi"
+tmp = "/dev/shm/aspis-fi"                     # output files of the experiments
 models = ["reg", "branch"]
-injections = 1000                            # per application x configuration x model
-chunk = 100
+injections = 500                              # per application x configuration x model
 seed = 2026
-timeout_factor = 20                          # hang = 20x the normal run time ...
-timeout_min_ms = 300                         # ... but at least 300 ms
+timeout_factor = 20                           # after the fault, a run is a hang if it lasts 20 times
+timeout_min_ms = 1000                         # the normal run time, and at least 1 s
 
 # The first configuration is the reference: same pipeline, no protection.
 [[config]]

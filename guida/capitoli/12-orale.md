@@ -105,44 +105,54 @@ Sono tutti di `cpp_complex`: il programma di riferimento non compila con la
 libreria C++ della nostra macchina (usa `std::powf`, che libstdc++ 13 non
 dichiara). Non dipende da ASPIS. (Cap. 7.3)
 
-**17. Come funziona il vostro iniettore?**
-Con `ptrace`: una prima esecuzione passo-passo conta quante volte viene
-eseguita ogni istruzione; poi ogni esperimento sceglie a caso un'esecuzione di
-un'istruzione (cioè un istante), ferma il programma lì con un breakpoint
-`int3`, inverte un bit di un registro o la direzione di un salto, lo lascia
-proseguire e classifica l'esito confrontando l'output con quello di
-riferimento. (Cap. 9)
+**17. Come iniettate i guasti?**
+Con gdb. Una prima esecuzione sotto valgrind (`callgrind`) conta quante volte
+viene eseguita ogni istruzione; poi ogni esperimento sceglie a caso
+un'esecuzione di un'istruzione (cioè un istante), e uno script per gdb mette
+un breakpoint su quell'istruzione con un *ignore count*, così il programma si
+ferma lì; inverte un bit di un registro (`set $rax = ...`) o manda il salto
+dall'altra parte (cambiando `$pc`), lo lascia proseguire, e lo script della
+campagna classifica l'esito confrontando l'output con quello di riferimento.
+(Cap. 9)
 
-**18. Perché disattivate l'ASLR?**
-Perché il profilo registra gli indirizzi delle istruzioni: devono essere gli
-stessi in tutte le esecuzioni. (Cap. 9.1)
+**18. Perché non avete scritto un vostro iniettore?**
+Perché gdb fa già tutto quello che serve: fermare il programma su
+un'istruzione precisa, cambiare i registri e farlo ripartire. Un iniettore
+scritto da noi con `ptrace` (c'era nelle versioni precedenti) è più veloce,
+ma molto più lungo e difficile da verificare. Il prezzo di gdb è il tempo:
+⟦exp_time_short⟧ (Cap. 9.5)
 
-**19. Perché scegliere l'istante uniformemente tra le istruzioni eseguite?**
+**19. Perché gli indirizzi sono gli stessi in tutte le esecuzioni?**
+Perché gdb disattiva la randomizzazione degli indirizzi (ASLR): il programma
+viene caricato sempre alla stessa base, e lo script calcola la base
+confrontando l'indirizzo di `main` prima e dopo l'avvio. (Cap. 9.1, 9.3)
+
+**20. Perché scegliere l'istante uniformemente tra le istruzioni eseguite?**
 Perché un guasto transitorio può arrivare in qualunque momento: scegliere
 un'esecuzione a caso di un'istruzione a caso (pesata con il numero di
 esecuzioni) equivale a scegliere un istante a caso del tempo di esecuzione.
-(Cap. 9.4)
+(Cap. 9.2)
 
-**20. Quanti esperimenti e quanto sono affidabili i numeri?**
+**21. Quanti esperimenti e quanto sono affidabili i numeri?**
 48.000 (4 applicazioni × 6 configurazioni × 2 modelli × 1000), più 8000 di
 EDDI+RASM senza la correzione di RASM. Ogni percentuale ha un intervallo di
 confidenza al 95% di Wilson: per esempio la SDC di EDDI con i bit-flip nei
 registri è 0,20%, con intervallo 0,10-0,39%. (Cap. 10.3)
 
-**21. Perché l'intervallo di Wilson e non quello classico?**
+**22. Perché l'intervallo di Wilson e non quello classico?**
 Perché quello classico funziona male con percentuali vicine a zero (con zero
 casi dà un intervallo nullo); Wilson resta corretto. (Cap. 10.3)
 
-**22. Quanto costano le protezioni?**
+**23. Quanto costano le protezioni?**
 EDDI esegue 3,74 volte le istruzioni e ha il codice 9,27 volte più grande;
 CFCSS 1,65x, RASM 2,33x; EDDI+RASM circa 6x (5,95x). (Cap. 11.1)
 
-**23. Perché il codice cresce più dell'esecuzione?**
+**24. Perché il codice cresce più dell'esecuzione?**
 Perché ogni funzione esiste in più versioni (`f`, `f_ret`, `f_dup`,
 `f_ret_dup`), anche quelle non più usate restano nell'eseguibile, ogni
 controllo aggiunge blocchi, e a `-O0` tutto passa dallo stack. (Cap. 11.1)
 
-**24. Perché EDDI "rileva" il 78% dei salti invertiti, se non vede i salti?**
+**25. Perché EDDI "rileva" il 78% dei salti invertiti, se non vede i salti?**
 Perché il 76% dei salti condizionali eseguiti da un programma con EDDI sono i
 salti dei suoi controlli: invertirne uno manda il programma nel blocco
 d'errore. Classificando i salti colpiti, 3066 dei 3126 rilevamenti erano
@@ -151,20 +161,20 @@ duplicate, come la `select` di `load_at`, che con EDDI diventa due salti, uno
 per copia. Lo stesso per CFCSS (62%), dove tutti i rilevamenti sono salti dei
 controlli. (Cap. 11.3)
 
-**25. Qual è la configurazione migliore?**
+**26. Qual è la configurazione migliore?**
 Dipende da cosa si teme e da quanto si può pagare: contro i guasti nei dati
 serve EDDI, contro i salti sbagliati serve RASM; insieme non lasciano quasi
 nessuna SDC (2 su 4000 per i registri, 0 su 4000 per i salti), ma costano
 circa 6 volte le istruzioni. (Cap. 11.6)
 
-**26. Quali sono i limiti del vostro lavoro?**
+**27. Quali sono i limiti del vostro lavoro?**
 Solo registri generali e salti (niente registri in virgola mobile, memoria,
 guasti multipli); 1000 guasti per applicazione, quindi intervalli larghi sulla
 singola applicazione; costo misurato in istruzioni e non in tempo; le
 tecniche sull'IR non vedono i salti creati dal back-end; il bug di EDDI è
 aggirato e non corretto. (Report, sezione 7)
 
-**27. Come avete usato l'intelligenza artificiale?**
+**28. Come avete usato l'intelligenza artificiale?**
 I supervisori l'hanno permesso a patto di dichiararlo. Abbiamo usato Claude
 (Anthropic), tramite Claude Code, per scrivere il codice, eseguire gli
 esperimenti, cercare e correggere i bug e scrivere il report; noi abbiamo
@@ -172,13 +182,13 @@ definito obiettivi e perimetro, seguito il lavoro e controllato i risultati.
 È dichiarato nella sezione 8 del report. Conviene essere pronti a spiegare
 ogni parte: è lo scopo di questa guida.
 
-**28. La correzione e i test sono già in ASPIS?**
+**29. La correzione e i test sono già in ASPIS?**
 No: sono pronti come patch (`aspis-integration/patches/`), verificate sul
 commit `b66a090`, e il bug di EDDI è descritto in `bug_report.md`, ma non è
 stato inviato ancora nulla. Si possono proporre con una pull request e una
 issue, dopo averne parlato con i supervisori nella chiamata. (Cap. 12, 16)
 
-**29. Quattro applicazioni bastano?**
+**30. Quattro applicazioni bastano?**
 È una delle domande da fare ai supervisori (che avevano scritto "once you have
 identified them, we can discuss whether they are sufficient"). Gli argomenti a
 favore: coprono quattro settori diversi (crittografia, segnali, compressione,
@@ -190,30 +200,32 @@ aggiungerle è facile (cap. 7.2).
 
 | Termine | Significato |
 |---|---|
-| **ASLR** | *Address Space Layout Randomization*: il sistema operativo carica il programma a indirizzi casuali; l'iniettore la disattiva |
+| **ASLR** | *Address Space Layout Randomization*: il sistema operativo carica il programma a indirizzi casuali; gdb la disattiva |
 | **basic block** | sequenza di istruzioni senza salti interne, con un solo ingresso e una sola uscita |
 | **back-end** | la parte del compilatore che traduce l'IR in codice macchina |
+| **breakpoint** | punto in cui il debugger ferma il programma; con un *ignore count* N viene ignorato per N passaggi |
+| **callgrind** | lo strumento di valgrind che conta quante volte viene eseguita ogni istruzione |
 | **CFC** | *control-flow checking*, controllo del flusso di esecuzione |
 | **CFCSS** | tecnica CFC a firme con aggiornamento XOR (Oh et al., 2002) |
 | **CFG** | *control-flow graph*, grafo dei blocchi e dei salti tra loro |
-| **chunk** | blocco di 100 esperimenti eseguiti da un processo `fi` con un seme |
 | **DUE** | *detected unrecoverable error*: errore rilevato (crash, hang, controllo) |
 | **EDDI** | *Error Detection by Duplicated Instructions* (Oh et al., 2002) |
 | **ErrBB** | blocco creato da EDDI (o dalle tecniche CFC) che chiama il gestore d'errore |
 | **fault injection** | iniezione artificiale di guasti per misurare l'effetto delle protezioni |
 | **FDSC** | *Full Duplication with Selective Checking*, variante di EDDI |
 | **front-end** | la parte del compilatore che analizza il sorgente e produce l'IR (per il C: `clang`) |
+| **gdb** | il debugger di GNU: lo usiamo per fermare il programma e iniettare il guasto |
 | **golden run** | esecuzione senza guasti, il cui output fa da riferimento |
 | **hang** | il programma non termina entro il tempo limite |
 | **harness** | il sistema di test di ASPIS (`testing/test.py`) |
-| **int3** | istruzione x86 di breakpoint (byte `0xcc`): genera un `SIGTRAP` |
+| **ignore count** | quante volte gdb deve ignorare un breakpoint prima di fermarsi |
 | **IR** | *intermediate representation*, il linguaggio intermedio di LLVM |
 | **jcc** | salto condizionale x86 (`je`, `jne`, `jl`, ...) |
 | **masked** | il guasto non ha avuto effetti visibili |
 | **opt** | il programma di LLVM che esegue i pass sull'IR |
 | **pass** | trasformazione o analisi dell'IR |
 | **patch** | file con un commit di git (diff + messaggio), applicabile con `git am` |
-| **ptrace** | chiamata di sistema con cui un processo controlla un altro (debugger) |
+| **ptrace** | chiamata di sistema con cui un processo controlla un altro: è quella che usa gdb |
 | **RACFED** | variante di RASM che aggiorna la firma dopo ogni istruzione |
 | **RASM** | *Random Additive Signature Monitoring* (Vankeirsbilck et al., 2017) |
 | **REDDI** | variante di EDDI che protegge solo il codice annotato `to_harden` |
@@ -226,5 +238,6 @@ aggiungerle è facile (cap. 7.2).
 | **SIHFT** | *Software-Implemented Hardware Fault Tolerance* |
 | **SSA** | *static single assignment*: ogni valore dell'IR è assegnato una volta |
 | **TDA** | TypeDeductionAnalysis, la libreria che deduce i tipi puntati |
+| **valgrind** | esegue un programma su un processore simulato per analizzarlo (con `callgrind` conta le istruzioni) |
 | **VerificationBB** | blocco creato da EDDI che contiene i confronti tra le copie |
 | **Wilson (intervallo di)** | intervallo di confidenza per una proporzione, affidabile anche vicino a 0 |
