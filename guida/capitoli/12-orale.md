@@ -1,4 +1,4 @@
-# 16. Domande probabili all'orale
+# 17. Domande probabili all'orale
 
 Le risposte sono brevi di proposito: sono il nucleo da cui partire, poi si
 può approfondire con i capitoli indicati.
@@ -55,39 +55,57 @@ opposta, la firma corrisponde all'altro successore e il controllo
 all'ingresso fallisce. (Cap. 4.4)
 
 **10. Quali bug avete trovato?**
-Tre. (1) I controlli di EDDI sui puntatori leggevano anche da puntatori
-nulli. (2) Dopo le chiamate di libreria EDDI copiava sempre 8 byte
-dall'originale alla copia, anche dentro le stringhe letterali in memoria di
-sola lettura: è il crash di tutte e quattro le applicazioni. (3) RASM non
-controllava la firma nei blocchi `VerificationBB` creati da EDDI, quindi
-EDDI+RASM perdeva i salti invertiti. (Cap. 8)
+Due. (1) Dopo le chiamate di libreria EDDI copiava sempre 8 byte
+dall'originale alla copia di ogni argomento puntatore, anche dentro le
+stringhe letterali in memoria di sola lettura: faceva andare in crash la
+prima versione di tutte e quattro le applicazioni. (2) RASM non controllava
+la firma nei blocchi `VerificationBB` creati da EDDI, quindi EDDI+RASM
+perdeva i salti invertiti. Il primo lo abbiamo isolato, segnalato e aggirato;
+il secondo lo abbiamo corretto. (Cap. 8)
 
-**11. Come avete trovato il bug 2?**
-Con `gdb`: il crash era sempre una scrittura di 8 byte subito dopo un
-`printf`, in una stringa letterale (`"kat ct: "`, `"OK"`, `"SUCCESS"`). Poi un
-programma di 5 righe che lo riproduce, e la lettura di
-`fixFuncValsPassedByReference` in `EDDI.cpp`. (Cap. 8.3)
+**11. Come avete trovato il bug di EDDI?**
+Con i test di compatibilità, che fallivano in 120 combinazioni su 220. Con
+`gdb`: il crash era sempre una scrittura di 8 byte subito dopo un `printf`,
+in una stringa letterale (`"kat ct: "`, `"OK"`, `"SUCCESS"`). Poi un programma
+di cinque righe che lo riproduce, e la lettura di
+`fixFuncValsPassedByReference` in `EDDI.cpp`. (Cap. 8.2)
 
-**12. Come avete trovato il bug 3, visto che nessun test fallisce?**
-Dai numeri: EDDI+RASM aveva più SDC di RASM da solo (10,5% contro 0,73%), il
-che non ha senso. Con `sdc_sites.py` abbiamo visto che tutte le 421 SDC erano
-su salti i cui successori cominciavano scrivendo una costante nella firma,
+**12. Perché non avete corretto il bug di EDDI?**
+Perché la correzione vera richiede di riscrivere quella funzione: copiare la
+dimensione giusta dell'oggetto puntato, saltare la memoria di sola lettura e
+gli argomenti che la funzione chiamata non può modificare. È un intervento
+complesso nel codice C++ di EDDI, che chi mantiene ASPIS può fare meglio di
+noi. Lo abbiamo descritto in `bug_report.md` con il riproduttore e una
+proposta di correzione. (Cap. 8.2)
+
+**13. Cambiare le applicazioni per far passare i test non è un trucco?**
+No, se lo si dichiara: il bug resta documentato e riproducibile
+(`bug_report.md`, `string_literal.c`), la prima versione delle applicazioni è
+nella storia di git e il log `harness_master_first_version.log.gz` mostra le
+120 combinazioni che fallivano. Le applicazioni modificate stampano lo stesso
+identico output. Il report lo dice tra i limiti: quella parte di EDDI non è
+provata dalle nostre applicazioni. (Cap. 7.3, 8.2)
+
+**14. Come avete trovato il bug di RASM, visto che nessun test fallisce?**
+Dai numeri: EDDI+RASM aveva più SDC di RASM da solo (10,2% contro 0,88%), il
+che non ha senso. Con `sdc_sites.py` abbiamo visto che tutte le 407 SDC erano
+su salti verso blocchi che cominciavano scrivendo una costante nella firma,
 cioè blocchi in cui RASM reimpostava la firma senza controllarla. Erano i
 `VerificationBB` di EDDI, esclusi per errore da un controllo sul nome del
-blocco. (Cap. 8.4)
+blocco. (Cap. 8.3)
 
-**13. Come avete verificato che le correzioni non rompano nulla?**
+**15. Come avete verificato che la correzione non rompa nulla?**
 Con il sistema di test ufficiale di ASPIS: sui 48 test esistenti i risultati
 con e senza le patch sono identici (2453 superati, 33 falliti, 154
-saltati); le nostre applicazioni passano in tutte le 220 combinazioni.
-(Cap. 7.3)
+saltati); le nostre applicazioni passano in tutte le 220 combinazioni, sia
+su `master` sia con le patch. (Cap. 7.3)
 
-**14. Perché 33 test falliscono anche su `master`?**
+**16. Perché 33 test falliscono anche su `master`?**
 Sono tutti di `cpp_complex`: il programma di riferimento non compila con la
 libreria C++ della nostra macchina (usa `std::powf`, che libstdc++ 13 non
 dichiara). Non dipende da ASPIS. (Cap. 7.3)
 
-**15. Come funziona il vostro iniettore?**
+**17. Come funziona il vostro iniettore?**
 Con `ptrace`: una prima esecuzione passo-passo conta quante volte viene
 eseguita ogni istruzione; poi ogni esperimento sceglie a caso un'esecuzione di
 un'istruzione (cioè un istante), ferma il programma lì con un breakpoint
@@ -95,53 +113,58 @@ un'istruzione (cioè un istante), ferma il programma lì con un breakpoint
 proseguire e classifica l'esito confrontando l'output con quello di
 riferimento. (Cap. 9)
 
-**16. Perché disattivate l'ASLR?**
+**18. Perché disattivate l'ASLR?**
 Perché il profilo registra gli indirizzi delle istruzioni: devono essere gli
 stessi in tutte le esecuzioni. (Cap. 9.1)
 
-**17. Perché scegliere l'istante uniformemente tra le istruzioni eseguite?**
+**19. Perché scegliere l'istante uniformemente tra le istruzioni eseguite?**
 Perché un guasto transitorio può arrivare in qualunque momento: scegliere
 un'esecuzione a caso di un'istruzione a caso (pesata con il numero di
 esecuzioni) equivale a scegliere un istante a caso del tempo di esecuzione.
 (Cap. 9.4)
 
-**18. Quanti esperimenti e quanto sono affidabili i numeri?**
-48.000 (4 applicazioni × 6 configurazioni × 2 modelli × 1000), più 8000 per
-il bug 3. Ogni percentuale ha un intervallo di confidenza al 95% di Wilson:
-per esempio la SDC di EDDI è 0,15%, con intervallo 0,07-0,33%. (Cap. 10.3)
+**20. Quanti esperimenti e quanto sono affidabili i numeri?**
+48.000 (4 applicazioni × 6 configurazioni × 2 modelli × 1000), più 8000 di
+EDDI+RASM senza la correzione di RASM. Ogni percentuale ha un intervallo di
+confidenza al 95% di Wilson: per esempio la SDC di EDDI con i bit-flip nei
+registri è 0,20%, con intervallo 0,10-0,39%. (Cap. 10.3)
 
-**19. Perché l'intervallo di Wilson e non quello classico?**
+**21. Perché l'intervallo di Wilson e non quello classico?**
 Perché quello classico funziona male con percentuali vicine a zero (con zero
 casi dà un intervallo nullo); Wilson resta corretto. (Cap. 10.3)
 
-**20. Quanto costano le protezioni?**
-EDDI esegue 3,8 volte le istruzioni e ha il codice 9,2 volte più grande;
-CFCSS 1,7x, RASM 2,3x; EDDI+RASM 6x. (Cap. 11.1)
+**22. Quanto costano le protezioni?**
+EDDI esegue 3,74 volte le istruzioni e ha il codice 9,27 volte più grande;
+CFCSS 1,65x, RASM 2,33x; EDDI+RASM circa 6x (5,95x). (Cap. 11.1)
 
-**21. Perché il codice cresce più dell'esecuzione?**
+**23. Perché il codice cresce più dell'esecuzione?**
 Perché ogni funzione esiste in più versioni (`f`, `f_ret`, `f_dup`,
 `f_ret_dup`), anche quelle non più usate restano nell'eseguibile, ogni
 controllo aggiunge blocchi, e a `-O0` tutto passa dallo stack. (Cap. 11.1)
 
-**22. Perché EDDI "rileva" il 77% dei salti invertiti, se non vede i salti?**
+**24. Perché EDDI "rileva" il 78% dei salti invertiti, se non vede i salti?**
 Perché il 76% dei salti condizionali eseguiti da un programma con EDDI sono i
 salti dei suoi controlli: invertirne uno manda il programma nel blocco
-d'errore. I salti del programma invece non li vede. Lo stesso per CFCSS
-(62%). (Cap. 11.3)
+d'errore. Classificando i salti colpiti, 3066 dei 3126 rilevamenti erano
+salti dei controlli; gli altri 60 sono salti del programma nelle funzioni
+duplicate, come la `select` di `load_at`, che con EDDI diventa due salti, uno
+per copia. Lo stesso per CFCSS (62%), dove tutti i rilevamenti sono salti dei
+controlli. (Cap. 11.3)
 
-**23. Qual è la configurazione migliore?**
+**25. Qual è la configurazione migliore?**
 Dipende da cosa si teme e da quanto si può pagare: contro i guasti nei dati
 serve EDDI, contro i salti sbagliati serve RASM; insieme non lasciano quasi
-nessuna SDC (1 su 4000 per i registri, 0 su 4000 per i salti), ma costano 6
-volte le istruzioni. (Cap. 11.6)
+nessuna SDC (2 su 4000 per i registri, 0 su 4000 per i salti), ma costano
+circa 6 volte le istruzioni. (Cap. 11.6)
 
-**24. Quali sono i limiti del vostro lavoro?**
+**26. Quali sono i limiti del vostro lavoro?**
 Solo registri generali e salti (niente registri in virgola mobile, memoria,
-guasti multipli); applicazioni piccole; costo misurato in istruzioni e non in
-tempo; le tecniche sull'IR non vedono i salti creati dal back-end. (Report,
-sezione 7)
+guasti multipli); 1000 guasti per applicazione, quindi intervalli larghi sulla
+singola applicazione; costo misurato in istruzioni e non in tempo; le
+tecniche sull'IR non vedono i salti creati dal back-end; il bug di EDDI è
+aggirato e non corretto. (Report, sezione 7)
 
-**25. Come avete usato l'intelligenza artificiale?**
+**27. Come avete usato l'intelligenza artificiale?**
 I supervisori l'hanno permesso a patto di dichiararlo. Abbiamo usato Claude
 (Anthropic), tramite Claude Code, per scrivere il codice, eseguire gli
 esperimenti, cercare e correggere i bug e scrivere il report; noi abbiamo
@@ -149,12 +172,21 @@ definito obiettivi e perimetro, seguito il lavoro e controllato i risultati.
 È dichiarato nella sezione 8 del report. Conviene essere pronti a spiegare
 ogni parte: è lo scopo di questa guida.
 
-**26. Le correzioni sono già in ASPIS?**
-No: sono pronte come patch (`aspis-integration/patches/`), verificate sul
-commit `b66a090`, ma non ancora inviate. Si possono proporre con una pull
-request, magari dopo averne parlato con i supervisori. (Cap. 12)
+**28. La correzione e i test sono già in ASPIS?**
+No: sono pronti come patch (`aspis-integration/patches/`), verificate sul
+commit `b66a090`, e il bug di EDDI è descritto in `bug_report.md`, ma non è
+stato inviato ancora nulla. Si possono proporre con una pull request e una
+issue, dopo averne parlato con i supervisori nella chiamata. (Cap. 12, 16)
 
-# 17. Glossario
+**29. Quattro applicazioni bastano?**
+È una delle domande da fare ai supervisori (che avevano scritto "once you have
+identified them, we can discuss whether they are sufficient"). Gli argomenti a
+favore: coprono quattro settori diversi (crittografia, segnali, compressione,
+controllo), usano interi, virgola mobile, puntatori, struct e la libreria C,
+e ognuna viene provata con 55 combinazioni di tecniche. Se ne chiedono altre,
+aggiungerle è facile (cap. 7.2).
+
+# 18. Glossario
 
 | Termine | Significato |
 |---|---|

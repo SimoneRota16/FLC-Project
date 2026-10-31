@@ -71,8 +71,7 @@ solo quello che manca.
 I numeri della nostra campagna: 4 applicazioni × 6 configurazioni × 2 modelli
 × 1000 = **48.000 esperimenti**, in circa 18 minuti su una macchina virtuale
 con 4 core (6 minuti di golden run e 12 di esperimenti). Più gli **8000** di
-EDDI+RASM con ASPIS senza la correzione del bug 3, in circa 4 minuti e
-mezzo.
+EDDI+RASM con ASPIS senza la correzione di RASM, in pochi minuti.
 
 `export.py` copia `metrics.csv` e `outcomes.csv` nel repository
 (`results/fault_injection/`) e unisce tutti i CSV dei blocchi in un unico
@@ -103,13 +102,13 @@ Esempi dalla nostra campagna:
 
 | | k / n | p | intervallo di Wilson al 95% |
 |---|---:|---:|---|
-| EDDI, bit-flip nei registri | 6 / 4000 | 0,15% | 0,07% – 0,33% |
+| EDDI, bit-flip nei registri | 8 / 4000 | 0,20% | 0,10% – 0,39% |
 | EDDI+RASM, salti invertiti | 0 / 4000 | 0% | 0,00% – 0,10% |
-| baseline, bit-flip nei registri | 68 / 4000 | 1,70% | 1,34% – 2,15% |
+| baseline, bit-flip nei registri | 57 / 4000 | 1,43% | 1,10% – 1,84% |
 
 Il secondo esempio si legge: "non abbiamo visto nessuna SDC su 4000 salti
 invertiti; la vera probabilità è, con il 95% di confidenza, sotto lo 0,10%".
-Quando due intervalli non si sovrappongono (1,34-2,15% contro 0,07-0,33%), la
+Quando due intervalli non si sovrappongono (1,10-1,84% contro 0,10-0,39%), la
 differenza non è dovuta al caso.
 
 ## 10.4 La media geometrica
@@ -119,9 +118,9 @@ geometrica** dei rapporti, `(r1 · r2 · r3 · r4)^(1/4)`, non quella aritmetica
 Il motivo: i rapporti si moltiplicano, non si sommano. Se un programma
 raddoppia (2x) e un altro dimezza (0,5x), la media aritmetica dice 1,25x,
 quella geometrica 1x, che è la risposta giusta ("in media non cambia
-nulla"). Per EDDI i rapporti delle istruzioni eseguite sono 3,82 (`aes128`),
-3,63 (`fft`), 3,56 (`huffman`) e 4,15 (`pid_control`): la media geometrica è
-3,78.
+nulla"). Per EDDI i rapporti delle istruzioni eseguite sono 3,68 (`aes128`),
+3,63 (`fft`), 3,56 (`huffman`) e 4,12 (`pid_control`): la media geometrica è
+3,74.
 
 ## 10.5 Gli script di analisi
 
@@ -129,6 +128,6 @@ nulla"). Per EDDI i rapporti delle istruzioni eseguite sono 3,82 (`aes128`),
   scrive le tabelle (`report/tables/*.md`, in formato Markdown) e le figure
   (`report/figures/*.svg` e `.png`, con matplotlib) che `report/build.py`
   inserisce nel report;
-- `sdc_sites.py` (capitolo 8.4) mostra dove sono avvenute le SDC di una
+- `sdc_sites.py` (capitolo 8.3) mostra dove sono avvenute le SDC di una
   configurazione: le istruzioni colpite, quante volte, e i successori dei
   salti.

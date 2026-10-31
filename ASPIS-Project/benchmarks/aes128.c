@@ -16,6 +16,10 @@
  *   - arrays passed by pointer to many small functions
  *   - nested loops with constant trip counts
  *
+ * The results are printed with literal strings only, never with "%s" and a
+ * string chosen at run time: on ASPIS b66a090 that makes the programs
+ * hardened with EDDI crash (aspis-integration/reproducers/string_literal.c).
+ *
  * Copyright (c) 2026 Alberto Rotolo, Simone Rota
  * SPDX-License-Identifier: MIT
  */
@@ -240,9 +244,8 @@ static void cbc_decrypt(const uint8_t *in, uint8_t *out, int blocks,
     }
 }
 
-static void print_hex(const char *label, const uint8_t *buf, int n) {
+static void print_hex(const uint8_t *buf, int n) {
     int i;
-    printf("%s", label);
     for (i = 0; i < n; i++)
         printf("%02x", buf[i]);
     printf("\n");
@@ -286,13 +289,17 @@ int main(void) {
     /* FIPS-197 Appendix C.1 known-answer test */
     aes_key_expansion(kat_key, rk);
     aes_encrypt_block(kat_pt, ct, rk);
-    print_hex("kat ct: ", ct, AES_BLOCK);
+    printf("kat ct: ");
+    print_hex(ct, AES_BLOCK);
     if (memcmp(ct, kat_ct, AES_BLOCK) != 0)
         ok = 0;
     aes_decrypt_block(ct, pt, rk);
     if (memcmp(pt, kat_pt, AES_BLOCK) != 0)
         ok = 0;
-    printf("kat: %s\n", ok ? "OK" : "MISMATCH");
+    if (ok)
+        printf("kat: OK\n");
+    else
+        printf("kat: MISMATCH\n");
 
     /* CBC round trip on a 64-byte message with a derived key */
     for (i = 0; i < AES_BLOCK; i++) {
@@ -303,13 +310,20 @@ int main(void) {
         msg[i] = (uint8_t)text[i];
     aes_key_expansion(key2, rk);
     cbc_encrypt(msg, enc, MSG_BLOCKS, iv, rk);
-    print_hex("cbc last: ", enc + (MSG_BLOCKS - 1) * AES_BLOCK, AES_BLOCK);
+    printf("cbc last: ");
+    print_hex(enc + (MSG_BLOCKS - 1) * AES_BLOCK, AES_BLOCK);
     printf("cbc fnv1a: %08x\n", (unsigned)fnv1a(enc, MSG_BLOCKS * AES_BLOCK));
     cbc_decrypt(enc, dec, MSG_BLOCKS, iv, rk);
     if (memcmp(dec, msg, MSG_BLOCKS * AES_BLOCK) != 0)
         ok = 0;
-    printf("cbc roundtrip: %s\n", memcmp(dec, msg, MSG_BLOCKS * AES_BLOCK) == 0 ? "OK" : "MISMATCH");
+    if (memcmp(dec, msg, MSG_BLOCKS * AES_BLOCK) == 0)
+        printf("cbc roundtrip: OK\n");
+    else
+        printf("cbc roundtrip: MISMATCH\n");
 
-    printf("%s\n", ok ? "SUCCESS" : "FAIL");
+    if (ok)
+        printf("SUCCESS\n");
+    else
+        printf("FAIL\n");
     return ok ? 0 : 1;
 }

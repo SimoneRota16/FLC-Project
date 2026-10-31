@@ -8,7 +8,8 @@ Usage:
   --campaign  output of campaign.py (metrics.csv, outcomes.csv)
   --before    output of the same campaign run with ASPIS before the RASM fix
   --harness   log of the official ASPIS harness (pytest test.py -v, also
-              gzipped), e.g. master=harness_master.log.gz
+              gzipped), e.g. master=harness_master.log.gz; the table of the
+              existing ASPIS tests uses the last two
 
 Writes <out>/figures/*.svg|png and <out>/tables/*.md.
 """
@@ -19,6 +20,7 @@ import math
 import os
 import re
 from collections import Counter
+from decimal import ROUND_HALF_UP, Decimal
 
 import matplotlib
 
@@ -68,7 +70,9 @@ def gmean(values):
 
 
 def pct(x, digits=1):
-    return ("%." + str(digits) + "f") % (100 * x)
+    """100*x with `digits` decimals, halves rounded up (35.05 -> 35.1)."""
+    q = Decimal(1).scaleb(-digits)
+    return str(Decimal(str(round(100 * x, 9))).quantize(q, rounding=ROUND_HALF_UP))
 
 
 def style(ax):
@@ -254,8 +258,9 @@ def tables_compat(runs, out):
         cells.append("**%d / %d**" % (mine.count("PASSED"), len(mine)))
     lines.append("| **total** | %s |" % " | ".join(cells))
     write(out, "compat_apps", lines)
-    # the existing tests of ASPIS
-    lines = ["| ASPIS tests | " + " | ".join(names) + " |", "|---" + "|---:" * len(names) + "|"]
+    # the existing tests of ASPIS, in the last two logs (main branch and patched)
+    runs = runs[-2:]
+    lines = ["| ASPIS tests | " + " | ".join(n for n, _ in runs) + " |", "|---" + "|---:" * len(runs) + "|"]
     for result in ("PASSED", "FAILED", "SKIPPED"):
         lines.append("| %s | %s |" % (result.lower(), " | ".join(
             str(sum(1 for (t, d, c), v in res.items() if t not in APPS and v == result)) for _, res in runs)))

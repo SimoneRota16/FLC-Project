@@ -16,6 +16,10 @@
  *   - recursion (code assignment)
  *   - bit-level writer and reader on a global byte buffer
  *
+ * The results are printed with literal strings only, never with "%s" and a
+ * string chosen at run time: on ASPIS b66a090 that makes the programs
+ * hardened with EDDI crash (aspis-integration/reproducers/string_literal.c).
+ *
  * Copyright (c) 2026 Alberto Rotolo, Simone Rota
  * SPDX-License-Identifier: MIT
  */
@@ -209,7 +213,13 @@ int main(void) {
 
     if (decode(root, nbits, decoded) != n || strcmp(decoded, text) != 0)
         ok = 0;
-    printf("roundtrip: %s\n", ok ? "OK" : "MISMATCH");
-    printf("%s\n", ok ? "SUCCESS" : "FAIL");
+    if (ok)
+        printf("roundtrip: OK\n");
+    else
+        printf("roundtrip: MISMATCH\n");
+    if (ok)
+        printf("SUCCESS\n");
+    else
+        printf("FAIL\n");
     return ok ? 0 : 1;
 }

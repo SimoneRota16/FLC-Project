@@ -56,9 +56,9 @@ Il profilo è un file di testo:
 ```text
 fi-profile 1
 text 555555555000 555555557000     # intervallo del codice del programma
-dynamic 645680 774766              # istruzioni eseguite: nel programma, in totale
+dynamic 645668 773764              # istruzioni eseguite: nel programma, in totale
 exit 0                             # codice d'uscita
-pcs 1316                           # numero di indirizzi distinti eseguiti
+pcs 1309                           # numero di indirizzi distinti eseguiti
 0 1 0 0 0 0                        # offset, esecuzioni, jcc?, cc, lunghezza, spostamento
 4 1 0 0 0 0
 ...
@@ -66,8 +66,8 @@ pcs 1316                           # numero di indirizzi distinti eseguiti
 ...
 ```
 
-(sono le prime righe del profilo di `aes128` senza protezione: 645.680
-istruzioni nel programma, 774.766 contando anche la libreria C).
+(sono le prime righe del profilo di `aes128` senza protezione: 645.668
+istruzioni nel programma, 773.764 contando anche la libreria C).
 
 Ogni riga dice quante volte è stata eseguita l'istruzione a quell'offset e,
 se è un salto condizionale, il suo *condition code*, la sua lunghezza in
@@ -158,12 +158,12 @@ Per ognuno degli N esperimenti, la funzione `cmd_inject`:
 
 ```text
 id,model,pc_off,occurrence,target,bit,injected,outcome,exit,signal,time_us
-0,reg,5745,384,rsp,18,1,crash,-1,11,17309
-1,reg,77bb,1031,rbx,51,1,masked,0,0,35805
+0,reg,78cf,1872,rsp,18,1,crash,-1,11,76506
+1,reg,7832,5413,rbx,51,1,masked,0,0,209156
 ```
 
    Il primo esperimento ha invertito il bit 18 di `rsp` (il puntatore allo
-   stack) alla 385ª esecuzione dell'istruzione all'offset `0x5745`: il
+   stack) alla 1873ª esecuzione dell'istruzione all'offset `0x78cf`: il
    programma è stato ucciso dal segnale 11 (`SIGSEGV`). Il secondo ha
    colpito `rbx` senza effetti visibili.
 

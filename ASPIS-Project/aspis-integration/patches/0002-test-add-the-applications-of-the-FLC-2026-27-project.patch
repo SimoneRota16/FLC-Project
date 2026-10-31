@@ -1,7 +1,7 @@
-From 9b1c1e622fee54e9cf77621d37bcc1995d8f601e Mon Sep 17 00:00:00 2001
+From e9499402643cfa6b44222898ad34c1a69da5a884 Mon Sep 17 00:00:00 2001
 From: Simone Rota <simone.rota16@gmail.com>
-Date: Fri, 30 Oct 2026 10:59:28 +0000
-Subject: [PATCH 4/4] test: add the applications of the FLC 2026/27 project
+Date: Sat, 31 Oct 2026 14:06:42 +0000
+Subject: [PATCH 2/2] test: add the applications of the FLC 2026/27 project
 
 Four small, self-checking applications: AES-128 (FIPS-197 known-answer
 test, CBC encryption and decryption), an iterative radix-2 FFT, Huffman
@@ -10,15 +10,14 @@ DC motor. They are deterministic, print a summary of their results and end
 with SUCCESS or FAIL; the fault handlers report the detections on stderr.
 
 All the 55 combinations of data protection and control-flow checking pass
-with the fixes of this series (220/220); on the main branch the techniques
-that duplicate the whole program (EDDI, sEDDI, FDSC) crash on all four.
+(220/220).
 ---
  testing/config/tests.toml                  |  23 +-
- testing/tests/c/applications/aes128.c      | 315 +++++++++++++++++++++
- testing/tests/c/applications/fft.c         | 176 ++++++++++++
- testing/tests/c/applications/huffman.c     | 215 ++++++++++++++
- testing/tests/c/applications/pid_control.c | 152 ++++++++++
- 5 files changed, 880 insertions(+), 1 deletion(-)
+ testing/tests/c/applications/aes128.c      | 329 +++++++++++++++++++++
+ testing/tests/c/applications/fft.c         | 186 ++++++++++++
+ testing/tests/c/applications/huffman.c     | 225 ++++++++++++++
+ testing/tests/c/applications/pid_control.c | 159 ++++++++++
+ 5 files changed, 921 insertions(+), 1 deletion(-)
  create mode 100644 testing/tests/c/applications/aes128.c
  create mode 100644 testing/tests/c/applications/fft.c
  create mode 100644 testing/tests/c/applications/huffman.c
@@ -58,10 +57,10 @@ index bf1599b..74156ca 100644
 +source_file = "c/applications/pid_control.c"
 diff --git a/testing/tests/c/applications/aes128.c b/testing/tests/c/applications/aes128.c
 new file mode 100644
-index 0000000..5356832
+index 0000000..dd86e3a
 --- /dev/null
 +++ b/testing/tests/c/applications/aes128.c
-@@ -0,0 +1,315 @@
+@@ -0,0 +1,329 @@
 +/*
 + * aes128.c -- AES-128 block cipher (FIPS-197) in ECB and CBC mode.
 + *
@@ -79,6 +78,10 @@ index 0000000..5356832
 + *   - byte-level arithmetic, shifts, rotations and table look-ups
 + *   - arrays passed by pointer to many small functions
 + *   - nested loops with constant trip counts
++ *
++ * The results are printed with literal strings only, never with "%s" and a
++ * string chosen at run time: on ASPIS b66a090 that makes the programs
++ * hardened with EDDI crash (aspis-integration/reproducers/string_literal.c).
 + *
 + * Copyright (c) 2026 Alberto Rotolo, Simone Rota
 + * SPDX-License-Identifier: MIT
@@ -304,9 +307,8 @@ index 0000000..5356832
 +    }
 +}
 +
-+static void print_hex(const char *label, const uint8_t *buf, int n) {
++static void print_hex(const uint8_t *buf, int n) {
 +    int i;
-+    printf("%s", label);
 +    for (i = 0; i < n; i++)
 +        printf("%02x", buf[i]);
 +    printf("\n");
@@ -350,13 +352,17 @@ index 0000000..5356832
 +    /* FIPS-197 Appendix C.1 known-answer test */
 +    aes_key_expansion(kat_key, rk);
 +    aes_encrypt_block(kat_pt, ct, rk);
-+    print_hex("kat ct: ", ct, AES_BLOCK);
++    printf("kat ct: ");
++    print_hex(ct, AES_BLOCK);
 +    if (memcmp(ct, kat_ct, AES_BLOCK) != 0)
 +        ok = 0;
 +    aes_decrypt_block(ct, pt, rk);
 +    if (memcmp(pt, kat_pt, AES_BLOCK) != 0)
 +        ok = 0;
-+    printf("kat: %s\n", ok ? "OK" : "MISMATCH");
++    if (ok)
++        printf("kat: OK\n");
++    else
++        printf("kat: MISMATCH\n");
 +
 +    /* CBC round trip on a 64-byte message with a derived key */
 +    for (i = 0; i < AES_BLOCK; i++) {
@@ -367,22 +373,29 @@ index 0000000..5356832
 +        msg[i] = (uint8_t)text[i];
 +    aes_key_expansion(key2, rk);
 +    cbc_encrypt(msg, enc, MSG_BLOCKS, iv, rk);
-+    print_hex("cbc last: ", enc + (MSG_BLOCKS - 1) * AES_BLOCK, AES_BLOCK);
++    printf("cbc last: ");
++    print_hex(enc + (MSG_BLOCKS - 1) * AES_BLOCK, AES_BLOCK);
 +    printf("cbc fnv1a: %08x\n", (unsigned)fnv1a(enc, MSG_BLOCKS * AES_BLOCK));
 +    cbc_decrypt(enc, dec, MSG_BLOCKS, iv, rk);
 +    if (memcmp(dec, msg, MSG_BLOCKS * AES_BLOCK) != 0)
 +        ok = 0;
-+    printf("cbc roundtrip: %s\n", memcmp(dec, msg, MSG_BLOCKS * AES_BLOCK) == 0 ? "OK" : "MISMATCH");
++    if (memcmp(dec, msg, MSG_BLOCKS * AES_BLOCK) == 0)
++        printf("cbc roundtrip: OK\n");
++    else
++        printf("cbc roundtrip: MISMATCH\n");
 +
-+    printf("%s\n", ok ? "SUCCESS" : "FAIL");
++    if (ok)
++        printf("SUCCESS\n");
++    else
++        printf("FAIL\n");
 +    return ok ? 0 : 1;
 +}
 diff --git a/testing/tests/c/applications/fft.c b/testing/tests/c/applications/fft.c
 new file mode 100644
-index 0000000..29bdf01
+index 0000000..87d47cf
 --- /dev/null
 +++ b/testing/tests/c/applications/fft.c
-@@ -0,0 +1,176 @@
+@@ -0,0 +1,186 @@
 +/*
 + * fft.c -- iterative radix-2 Cooley-Tukey FFT on 256 complex doubles.
 + *
@@ -400,6 +413,10 @@ index 0000000..29bdf01
 + *   - arrays of structs (complex numbers) in global memory
 + *   - calls to libm (sin, cos, sqrt) from hardened code
 + *   - bit-reversal permutation (integer bit manipulation)
++ *
++ * The results are printed with literal strings only, never with "%s" and a
++ * string chosen at run time: on ASPIS b66a090 that makes the programs
++ * hardened with EDDI crash (aspis-integration/reproducers/string_literal.c).
 + *
 + * Copyright (c) 2026 Alberto Rotolo, Simone Rota
 + * SPDX-License-Identifier: MIT
@@ -552,19 +569,25 @@ index 0000000..29bdf01
 +        if (e > max_err)
 +            max_err = e;
 +    }
-+    printf("ifft reconstruction: %s\n", max_err < 1e-9 ? "OK" : "MISMATCH");
++    if (max_err < 1e-9)
++        printf("ifft reconstruction: OK\n");
++    else
++        printf("ifft reconstruction: MISMATCH\n");
 +    if (max_err >= 1e-9)
 +        ok = 0;
 +
-+    printf("%s\n", ok ? "SUCCESS" : "FAIL");
++    if (ok)
++        printf("SUCCESS\n");
++    else
++        printf("FAIL\n");
 +    return ok ? 0 : 1;
 +}
 diff --git a/testing/tests/c/applications/huffman.c b/testing/tests/c/applications/huffman.c
 new file mode 100644
-index 0000000..4d21215
+index 0000000..189ac9c
 --- /dev/null
 +++ b/testing/tests/c/applications/huffman.c
-@@ -0,0 +1,215 @@
+@@ -0,0 +1,225 @@
 +/*
 + * huffman.c -- Huffman compression and decompression round trip.
 + *
@@ -582,6 +605,10 @@ index 0000000..4d21215
 + *   - binary heap (sift-up / sift-down loops with data-dependent exits)
 + *   - recursion (code assignment)
 + *   - bit-level writer and reader on a global byte buffer
++ *
++ * The results are printed with literal strings only, never with "%s" and a
++ * string chosen at run time: on ASPIS b66a090 that makes the programs
++ * hardened with EDDI crash (aspis-integration/reproducers/string_literal.c).
 + *
 + * Copyright (c) 2026 Alberto Rotolo, Simone Rota
 + * SPDX-License-Identifier: MIT
@@ -776,16 +803,22 @@ index 0000000..4d21215
 +
 +    if (decode(root, nbits, decoded) != n || strcmp(decoded, text) != 0)
 +        ok = 0;
-+    printf("roundtrip: %s\n", ok ? "OK" : "MISMATCH");
-+    printf("%s\n", ok ? "SUCCESS" : "FAIL");
++    if (ok)
++        printf("roundtrip: OK\n");
++    else
++        printf("roundtrip: MISMATCH\n");
++    if (ok)
++        printf("SUCCESS\n");
++    else
++        printf("FAIL\n");
 +    return ok ? 0 : 1;
 +}
 diff --git a/testing/tests/c/applications/pid_control.c b/testing/tests/c/applications/pid_control.c
 new file mode 100644
-index 0000000..b55a427
+index 0000000..149d731
 --- /dev/null
 +++ b/testing/tests/c/applications/pid_control.c
-@@ -0,0 +1,152 @@
+@@ -0,0 +1,159 @@
 +/*
 + * pid_control.c -- closed-loop speed control of a DC motor with a PID.
 + *
@@ -805,6 +838,10 @@ index 0000000..b55a427
 + *   - controller state kept in a global struct updated through a pointer
 + *   - float-to-int conversions (sensor quantisation)
 + *   - data-dependent branches (saturation, anti-windup)
++ *
++ * The results are printed with literal strings only, never with "%s" and a
++ * string chosen at run time: on ASPIS b66a090 that makes the programs
++ * hardened with EDDI crash (aspis-integration/reproducers/string_literal.c).
 + *
 + * Copyright (c) 2026 Alberto Rotolo, Simone Rota
 + * SPDX-License-Identifier: MIT
@@ -935,7 +972,10 @@ index 0000000..b55a427
 +    printf("saturated steps %d, last settling %d steps\n", saturated_steps, settled_at);
 +    if (abs_f(motor.speed - sp) > 0.1f || settled_at < 0)
 +        ok = 0;
-+    printf("%s\n", ok ? "SUCCESS" : "FAIL");
++    if (ok)
++        printf("SUCCESS\n");
++    else
++        printf("FAIL\n");
 +    return ok ? 0 : 1;
 +}
 -- 

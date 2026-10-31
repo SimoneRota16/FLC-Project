@@ -16,6 +16,10 @@
  *   - calls to libm (sin, cos, sqrt) from hardened code
  *   - bit-reversal permutation (integer bit manipulation)
  *
+ * The results are printed with literal strings only, never with "%s" and a
+ * string chosen at run time: on ASPIS b66a090 that makes the programs
+ * hardened with EDDI crash (aspis-integration/reproducers/string_literal.c).
+ *
  * Copyright (c) 2026 Alberto Rotolo, Simone Rota
  * SPDX-License-Identifier: MIT
  */
@@ -167,10 +171,16 @@ int main(void) {
         if (e > max_err)
             max_err = e;
     }
-    printf("ifft reconstruction: %s\n", max_err < 1e-9 ? "OK" : "MISMATCH");
+    if (max_err < 1e-9)
+        printf("ifft reconstruction: OK\n");
+    else
+        printf("ifft reconstruction: MISMATCH\n");
     if (max_err >= 1e-9)
         ok = 0;
 
-    printf("%s\n", ok ? "SUCCESS" : "FAIL");
+    if (ok)
+        printf("SUCCESS\n");
+    else
+        printf("FAIL\n");
     return ok ? 0 : 1;
 }

@@ -1,6 +1,6 @@
 ---
 title: "Hardening C applications with ASPIS"
-subtitle: "Four applications, three fixes and a fault-injection evaluation"
+subtitle: "Four applications, two bugs and a fault-injection evaluation"
 author:
   - "Alberto Rotolo, Simone Rota"
 date: "Formal Languages and Compilers, A.Y. 2026/27, Politecnico di Milano<br>Supervisors: Davide Baroffio, Emilio Corigliano"
@@ -18,29 +18,28 @@ the ASPIS main branch for regression testing.
 - We wrote **four small self-checking applications**: AES-128 encryption, an
   FFT, Huffman compression and a PID speed controller.
 - We added them to the official test harness of ASPIS, which builds every
-  test with 55 combinations of techniques. On the main branch only 100 of the
-  220 builds work: EDDI, sEDDI and FDSC, the techniques that duplicate the
-  whole program, make all four applications crash. We found the **bug in
-  EDDI** behind the crashes and fixed it, together with a related one whose
-  fix it needs. With the fixes all 220 builds pass, and the 48 tests already
-  in ASPIS give the same results as before.
+  test with 55 combinations of techniques. On the main branch the first
+  version of the applications passed only 100 of the 220 builds: EDDI, sEDDI
+  and FDSC, the techniques that duplicate the whole program, made all four
+  crash. We found the **bug in EDDI** behind the crashes, isolated it in a
+  five-line program and avoided it in our code. All the 220 builds now pass.
 - We wrote a **fault injector** based on `ptrace` and ran **56,000
   experiments** that flip a bit in a register or invert a conditional jump,
   on six hardening configurations.
 - EDDI reduces the silent data corruptions (SDCs) caused by register
-  bit-flips from 1.70% to 0.15% of the faults, at
-  3.8 times the executed instructions. RASM detects
-  99.3% of the inverted branches, CFCSS only
-  62.6%. The campaign also revealed a **third bug**:
-  RASM did not check the blocks created by EDDI, so EDDI combined with RASM
-  missed more inverted branches than RASM alone (10.5% of SDCs
-  instead of 0.7%). With the fix the combination leaves
-  no SDC in 4000 inverted branches.
+  bit-flips from 1.43% to 0.20% of the faults, at 3.7 times the executed
+  instructions. RASM detects 99.1% of the inverted branches, CFCSS only
+  62.0%. The campaign also revealed a **bug in RASM**: it did not check the
+  blocks created by EDDI, so EDDI combined with RASM missed more inverted
+  branches than RASM alone (10.2% of SDCs instead of 0.88%). We fixed it
+  with a one-line change; with the fix the combination leaves no SDC in 4000
+  inverted branches.
 
-The fixes and the tests are ready as four patches for the ASPIS repository
-(`aspis-integration/`). All the code, the raw results and the scripts that
-produce every table and figure are in the repository (Appendix A). The use of
-a large language model is declared in Section 8.
+The fix of RASM and the test entries are ready as two patches for the ASPIS
+repository, and the EDDI bug as a bug report (`aspis-integration/`). All the
+code, the raw results and the scripts that produce every table and figure
+are in the repository (Appendix A). The use of a large language model is
+declared in Section 8.
 
 # 1. Background
 
@@ -58,10 +57,11 @@ allowed by the control-flow graph.
 
 ## 1.2 ASPIS
 
-ASPIS (*Automatic Software-based Protection and Integrity Suite*, Baroffio et
-al., ACM TODAES 2024) implements these transformations as passes on the LLVM
-intermediate representation (IR). Its driver, `aspis.sh`, compiles the
-sources to IR without optimisations, links them, and runs:
+ASPIS (*Automatic Software-based Protection and Integrity Suite*, from the
+Greek word for shield; Baroffio et al., ACM TODAES 2024) implements these
+transformations as passes on the LLVM intermediate representation (IR). Its
+driver, `aspis.sh`, compiles the sources to IR without optimisations, links
+them, and runs:
 
 1. `FuncRetToRef`: every function that returns a value gets a `_ret`
    version that writes the result through an extra pointer parameter, so that
@@ -69,8 +69,8 @@ sources to IR without optimisations, links them, and runs:
 2. a data protection pass. **EDDI** (Oh et al., 2002) duplicates every
    instruction and compares the two copies before stores, calls and
    branches; **sEDDI** does not compare before stores; **FDSC** compares only
-   at a subset of these points; **REDDI** hardens only the functions marked
-   with the annotation `to_harden`;
+   at the basic blocks that have several predecessors; **REDDI** hardens only
+   the functions and globals annotated with `to_harden` and what they use;
 3. a control-flow checking pass. **CFCSS** (Oh et al., 2002) updates a
    run-time signature with an XOR at the entry of each block and compares it
    with the signature of the block. **RASM** (Vankeirsbilck et al., 2017)
@@ -84,12 +84,9 @@ Every hardened function `f` gets a version `f_dup` that takes each parameter
 twice and executes both copies of the computation; each global variable gets
 a `_dup` copy. When a check fails the program calls `DataCorruption_Handler`
 (data checks) or `SigMismatch_Handler` (signature checks), two functions that
-the application must define. Checks on pointers do not compare the two
-pointers, which legitimately differ when they point to the two copies of a
-variable, but the values they point to; ASPIS knows the pointed type through
-the *TypeDeductionAnalysis* library.
+the application must define.
 
-As an example, this is how EDDI (with our fixes) transforms
+As an example, this is how EDDI transforms
 `int scale(int v) { return v * g; }`, where `g` is a global variable. The
 result is returned through a pointer (`FuncRetToRef`), every parameter comes
 twice (`%0` and `%2` are the two copies of `v`, `%1` and `%3` of the result
@@ -153,10 +150,10 @@ the embedded systems targeted by SIHFT. They follow the same rules:
 
 | Application | What it does | Lines | Instructions |
 |---|---|---:|---:|
-| `aes128` | AES-128 encryption (FIPS-197): known-answer test, encryption and decryption of 64 bytes in CBC mode; the S-boxes are computed at start-up | 315 | 645,680 |
-| `fft` | radix-2 FFT of 256 points: dominant frequencies, Parseval's theorem, inverse transform | 176 | 367,763 |
-| `huffman` | Huffman compression and decompression of a text, with a binary min-heap | 215 | 170,978 |
-| `pid_control` | closed-loop speed control of a DC motor with a PID controller, 2000 steps | 152 | 477,393 |
+| `aes128` | AES-128 encryption (FIPS-197): known-answer test, encryption and decryption of 64 bytes in CBC mode; the S-boxes are computed at start-up | 329 | 645,668 |
+| `fft` | radix-2 FFT of 256 points: dominant frequencies, Parseval's theorem, inverse transform | 186 | 367,759 |
+| `huffman` | Huffman compression and decompression of a text, with a binary min-heap | 225 | 170,974 |
+| `pid_control` | closed-loop speed control of a DC motor with a PID controller, 2000 steps | 159 | 477,391 |
 
 : The applications. *Instructions*: x86-64 instructions executed in the
 program's own code (excluding the C library) by the unprotected program,
@@ -164,7 +161,7 @@ measured by the profiler of Section 4.
 
 # 3. Hardening the applications
 
-## 3.1 Results on the main branch
+## 3.1 Results of the harness
 
 We added the four applications to `tests.toml` and ran the harness on the
 main branch of ASPIS (commit `b66a090`, LLVM 21.1.8, x86-64 Linux).
@@ -172,71 +169,61 @@ main branch of ASPIS (commit `b66a090`, LLVM 21.1.8, x86-64 Linux).
 {{table:compat_apps}}
 
 : Builds of the four applications that pass the harness (4 applications x 5
-control-flow options for each data protection option), on the main branch
-and with our fixes.
+control-flow options for each data protection option): the first version
+of the applications on the main branch, the final version on the main
+branch, and the final version with our patches (Section 6).
 
-The control-flow techniques work on all the applications. REDDI passes too,
-but only because our applications have no `to_harden` annotation, so REDDI
-hardens nothing. The three techniques that duplicate the whole program,
-EDDI (in its four variants), sEDDI and FDSC, make all the applications crash
-with a segmentation fault. The cause is the bug described in Section 3.3.
+With the first version, the control-flow techniques worked on all the
+applications. REDDI passed too, but only because our applications have no
+`to_harden` annotation, so REDDI hardens nothing. The three techniques that
+duplicate the whole program, EDDI (in its four variants), sEDDI and FDSC,
+made all the applications crash with a segmentation fault.
 
-## 3.2 Bug 1: checks that dereference a null pointer
+## 3.2 A bug in EDDI
 
-A check on a pointer compares the two values it points to. When the pointer
-is null (the end of a list, or `realloc(NULL, n)`, which is a valid call) the
-check itself dereferences it and the program crashes. The reproducer
-`null_pointer.c` is a short program that calls `realloc(NULL, ...)`. This bug
-does not affect our applications directly, but the fix of bug 2 reads memory
-through pointers that can be null, so it needs the fix of this one.
+With a debugger we found that the faulting instruction was always an 8-byte
+store right after a call to `printf`, writing into a string literal, which is
+in read-only memory (`.rodata`): `"kat ct: "` in `aes128`, a label received as
+a parameter and printed with `printf("%s", label)`, and the string chosen by
+`ok ? "OK" : "MISMATCH"` or `ok ? "SUCCESS" : "FAIL"` in the other three.
+The five-line program `aspis-integration/reproducers/string_literal.c`
+reproduces the crash:
 
-**Fix** (patch 0001). The loads of a check now read from a constant equal to
-zero when the pointer is null. If both copies of the pointer are null the
-check passes; if only one is null the loaded values differ and the fault is
-detected. While changing this code we also made the comparison depend on the
-LLVM type of the values instead of the type in the source: a small struct
-passed by value becomes an `i64`, and the old code treated it as a struct and
-made the compiler crash. Values of aggregate type (structs and arrays) are
-explicitly not compared: the old code emitted a comparison that had no
-effect, and their padding can legitimately differ between the two copies.
+```c
+static void show(const char *label) { printf("%s\n", label); }
+int main(void) { show("hello"); return 0; }
+```
 
-## 3.3 Bug 2: the copy after calls to library functions
+**Cause.** When a hardened function calls a function that has no `_dup`
+version, like `printf`, the callee may write through its pointer arguments,
+and it updates only the original copy of the data. After the call EDDI
+therefore copies each pointed value from the original to the duplicate
+(`fixFuncValsPassedByReference` in `passes/EDDI.cpp`). The copy loads and
+stores a pointer-sized value (8 bytes), whatever the pointed type is. When
+the argument points to a string literal, the two copies of the pointer are
+the same read-only address (the two copies of the parameter `label`, or of
+the `?:`), so the store makes the program crash. The fixed size of the copy
+is wrong in general too: it overflows objects smaller than 8 bytes and
+synchronises only the first 8 bytes of larger ones.
 
-When a hardened function calls a function that has no `_dup` version, like
-`printf`, the callee may write through its pointer arguments, and it updates
-only the original copy of the data. After the call EDDI therefore copies each
-pointed value from the original to the duplicate. The copy loaded and stored
-a pointer-sized value (8 bytes), whatever the pointed type was:
+**What we did.** The applications now print only literal strings
+(`printf("SUCCESS\n")` instead of `printf("%s\n", ok ? "SUCCESS" : "FAIL")`),
+with the same output; a comment at the top of each file explains why. With
+this change all the 220 builds pass on the main branch (table above). We
+did not change EDDI: the bug is described, with the reproducer, the analysis
+and a possible fix, in `aspis-integration/bug_report.md`, ready to be
+reported to the maintainers.
 
-- if the pointer pointed to a string literal, the two copies of the
-  pointer were the same address in read-only memory (`.rodata`), and the
-  store made the program crash. This is the crash of all our applications:
-  with a debugger we found the faulting store right after a `printf`, writing
-  into `"kat ct: "` in `aes128` (a label received as a parameter and printed
-  with `printf("%s", label)`) and into the string chosen by
-  `ok ? "OK" : "MISMATCH"` or `ok ? "SUCCESS" : "FAIL"` in the other three.
-  The reproducer `string_literal.c` is five lines long;
-- for objects smaller than 8 bytes the copy overflowed the duplicate, and for
-  larger ones only the first 8 bytes were copied.
+## 3.3 No regressions
 
-**Fix** (patch 0002). Arguments that the callee cannot write through are
-skipped. Two distinct local or global variables are copied entirely with a
-`memcpy`. For any other pointer, the value of its deduced type is copied only
-if the two copies of the pointer differ at run time: when they are equal the
-memory is shared (it may even be read-only), so there is nothing to copy. The
-copy reads through the pointer, so it uses the null-safe loads of patch
-0001.
-
-## 3.4 No regressions
-
-With the two fixes all the 220 builds of our applications pass. On the 48
-tests that were already in ASPIS the harness gives exactly the same results
-with and without the fixes:
+The only change to ASPIS of this project is the fix of RASM of Section 5.4.
+On the 48 tests that were already in ASPIS the harness gives exactly the
+same results with and without it:
 
 {{table:compat_suite}}
 
-: Builds of the 48 existing tests of ASPIS (48 x 55 = 2640) on the main
-branch and with the fixes.
+: Builds of the 48 existing tests of ASPIS (48 x 55 = 2640), on the main
+branch and with our patches.
 
 The 154 skipped builds are excluded by the `black_list` of their tests. The
 33 failures are all the builds of `cpp_complex` that are not blacklisted: on
@@ -291,12 +278,13 @@ and the program's own check printing `FAIL`.
 configuration, records its size, profiles it and runs the injections in
 parallel. We used six configurations: the unprotected `baseline` (the same
 `aspis.sh` pipeline without transformations), EDDI, CFCSS, RASM, and EDDI
-combined with CFCSS and with RASM. For each application, configuration and
-fault model we injected 1000 faults, in chunks of 100 with seeds derived from
-the names: **48,000 experiments**. To measure the effect of the third bug
-(Section 5.4), EDDI+RASM was also run with ASPIS without its fix: 8,000 more
-experiments. Each proportion is given with its 95% confidence interval
-(Wilson score interval).
+combined with CFCSS and with RASM, built with ASPIS `b66a090` plus our fix of
+RASM. For each application, configuration and fault model we injected 1000
+faults, in chunks of 100 with seeds derived from the names: **48,000
+experiments**. To measure the effect of the RASM bug (Section 5.4), EDDI+RASM
+was also run with ASPIS `b66a090` without the fix: 8,000 more experiments.
+Each proportion is given with its 95% confidence interval (Wilson score
+interval).
 
 # 5. Results
 
@@ -310,16 +298,16 @@ consistency checks inserted by EDDI in the four applications.
 
 ![Code size and executed instructions relative to the unprotected program (bars: geometric mean over the four applications; dots: single applications).](figures/cost.svg)
 
-Data duplication is the expensive part. EDDI executes 3.8 times the
+Data duplication is the expensive part. EDDI executes 3.74 times the
 instructions of the unprotected program (geometric mean over the
-applications, between 3.6x and 4.1x): every instruction is executed twice,
-and each of its 1259 checks adds comparisons and a branch. The code grows
-much more than the execution (9.2x), because every function exists in up to
-four versions (original, `_ret`, `_dup`, `_ret_dup`), each check splits a
+applications, between 3.56x and 4.12x): every instruction is executed twice,
+and each of its 1283 checks adds comparisons and a branch. The code grows
+much more than the execution (9.27x), because every function exists in up
+to four versions (original, `_ret`, `_dup`, `_ret_dup`), each check splits a
 block, and without optimisations every value goes through the stack. The
-control-flow techniques cost less: 1.7x the executed instructions for CFCSS
-and 2.3x for RASM. Combined with EDDI the costs add up: 5.5x with CFCSS and
-6.0x with RASM.
+control-flow techniques cost less: 1.65x the executed instructions for CFCSS
+and 2.33x for RASM. Combined with EDDI the costs add up: 5.46x with CFCSS and
+5.95x with RASM.
 
 ## 5.2 Register bit-flips
 
@@ -330,15 +318,16 @@ and 2.3x for RASM. Combined with EDDI the costs add up: 5.5x with CFCSS and
 : Register bit-flips: outcome of the injections (% of n faults, pooled over
 the four applications), with the 95% confidence interval of the SDC rate.
 
-Register bit-flips are mostly harmless: in the unprotected programs 86.2%
+Register bit-flips are mostly harmless: in the unprotected programs 86.5%
 of them are masked (the register was not in use, or was overwritten before
 being read), 12.0% crash the program (for example a corrupted address) and
-1.70% silently corrupt the output. EDDI leaves 0.15% of SDCs, 11 times fewer.
-Its checks detect only 2.9% of the faults, but these are the dangerous ones:
+1.43% silently corrupt the output. EDDI leaves 0.20% of SDCs, 7 times fewer.
+Its checks detect only 3.1% of the faults, but these are the dangerous ones:
 a wrong value is caught before it reaches a store, a call or a branch. The
-control-flow techniques alone leave 0.88% (CFCSS) and 0.65% (RASM), since a
+control-flow techniques alone leave 0.80% (CFCSS) and 0.60% (RASM), since a
 signature only sees the bit-flips that change the path of the program.
-Combined with EDDI they leave one SDC in 4000 faults (0.03%).
+Combined with EDDI they leave one or two SDCs in 4000 faults (0.03% and
+0.05%).
 
 ## 5.3 Inverted branches
 
@@ -347,40 +336,41 @@ Combined with EDDI they leave one SDC in 4000 faults (0.03%).
 : Inverted branches: outcome of the injections (% of n faults, pooled over
 the four applications).
 
-Inverted branches are the most harmful faults: 78.8% of them corrupt the
+Inverted branches are the most harmful faults: 80.3% of them corrupt the
 output of the unprotected programs, because the results depend on how many
 times the loops run and on which path the data-dependent branches take.
 
-EDDI and CFCSS detect only the inversions of the jumps of their own checks.
-From the profiles of the golden runs, 76.3% of the conditional jumps executed
-by the programs hardened with EDDI belong to its checks, and 62.4% with
-CFCSS: an inverted check jumps to the error handler. These are almost
-exactly their detection rates (76.8% and 62.6%). The inversions of the
-program's own branches are not seen. EDDI compares the two copies of the
-condition before the jump, but then executes a single jump, so both copies
-of the data follow the wrong path; CFCSS only checks that the program
-follows an edge of the control-flow graph, and the wrong successor of a
-branch is an edge too. They leave 18.6% and 29.8% of SDCs.
+EDDI and CFCSS detect almost only the inversions of the jumps of their own
+checks. Counted on the golden runs with `fault_injection/check_jumps.py`,
+76.3% of the conditional jumps executed by the programs hardened with EDDI
+belong to its checks, and 62.4% with CFCSS: an inverted check jumps to the
+error handler. These shares are close to their detection rates (78.2% and
+62.0%). The inversions of the program's own branches are not seen. EDDI
+compares the two copies of the condition before the jump, but then executes
+a single jump, so both copies of the data follow the wrong path; CFCSS only
+checks that the program follows an edge of the control-flow graph, and the
+wrong successor of a branch is an edge too. They leave 17.8% and 30.0% of
+SDCs.
 
-RASM detects 99.3% of the inverted branches: before leaving a block it
+RASM detects 99.1% of the inverted branches: before leaving a block it
 updates the signature using the same condition as the jump, so a jump in the
 other direction reaches a block that expects a different signature. All its
-29 SDCs (0.73%) come from a single conditional jump of `pid_control` that is
+35 SDCs (0.88%) come from a single conditional jump of `pid_control` that is
 not a branch of the IR: in `load_at`, `return (k >= 1200 && k < 1300) ?
 1.5f : 0.0f;` is a `select` between two floats, which the x86 back-end
-implements with a jump when it does not optimise. No technique working on the
-IR can see that jump. EDDI with CFCSS leaves 8.2% of SDCs; EDDI with RASM
+implements with a jump when it does not optimise. No technique working on
+the IR can see that jump. EDDI with CFCSS leaves 7.8% of SDCs; EDDI with RASM
 none, because EDDI duplicates the `select` too, and a wrong jump in one copy
 makes the two copies differ.
 
-## 5.4 Bug 3, found by the fault injection
+## 5.4 A bug in RASM, found by the fault injection
 
-In the first run of the campaign EDDI+RASM left 10.5% of SDCs with
-inverted branches, much more than RASM alone (0.73%), although it adds the
+With ASPIS `b66a090`, without our fix, EDDI+RASM left 10.2% of SDCs with
+inverted branches, much more than RASM alone (0.88%), although it adds the
 checks of EDDI to those of RASM. With `fault_injection/sdc_sites.py`, which
 maps the SDCs to the instructions where the faults were injected and shows
-the successors of the jumps, we found that all the 421 SDCs happened at
-conditional jumps whose two successors start by writing a constant into the
+the successors of the jumps, we found that all the 407 SDCs happened at
+conditional jumps towards blocks that start by writing a constant into the
 signature of RASM, instead of checking it.
 
 The cause is in `RASM.cpp`: a block whose name contains "verification" is
@@ -397,12 +387,12 @@ VerificationBB2:                        ; created by EDDI
   store volatile i32 24, ptr %2         ; RASM resets the signature, no check
 ```
 
-**Fix** (patch 0003). Only the blocks whose name starts with `RASM_` (and
-the landing pads of C++ exceptions) are exempted; the `VerificationBB`
-blocks get the entry check like any other block. RACFED had the same code
-and is fixed in the same way. With the fix EDDI+RASM leaves no SDC among the
-4000 inverted branches, and its signature checks detect 66.0% of them
-instead of 34.6%; the rest is detected by the checks of EDDI.
+**Fix** (patch 0001). A one-line change: only the blocks whose name starts
+with `RASM_` (and the landing pads of C++ exceptions) are exempted, so the
+`VerificationBB` blocks get the entry check like any other block. RACFED had
+the same code and is fixed in the same way. With the fix EDDI+RASM leaves no
+SDC among the 4000 inverted branches, and its signature checks detect 65.0%
+of them instead of 35.1%; the rest is detected by the checks of EDDI.
 
 {{table:before_after}}
 
@@ -419,48 +409,52 @@ instead of 34.6%; the rest is detected by the checks of EDDI.
 : SDC rate (%) of inverted branches per application (1000 faults each).
 
 The unprotected applications have similar SDC rates for register bit-flips,
-between 1.3% (`fft`) and 2.2% (`aes128`), and EDDI brings all of them to 0.4%
-or less. With 1000 faults per application the differences between the
-applications are within the statistical uncertainty (about ±0.3 points). For
-inverted branches the picture is the same in all the applications; the SDCs
-left by RASM are all in `pid_control` (Section 5.3).
+between 1.1% (`fft`, `huffman`) and 1.9% (`aes128`), and EDDI brings all of
+them to 0.3% or less. With 1000 faults per application the differences
+between the applications are not significant: the 95% intervals overlap
+(1.2-2.9% for `aes128`, 0.6-2.0% for `fft`). For inverted branches the
+picture is the same in all the applications; the SDCs left by RASM are all
+in `pid_control` (Section 5.3).
 
 # 6. Integration into ASPIS
 
-`aspis-integration/patches/` contains four commits for the main branch of
-ASPIS, produced with `git format-patch` against `b66a090`:
+`aspis-integration/` contains what is needed to merge the work into the main
+branch of ASPIS:
 
-| Patch | Content |
+| File | Content |
 |---|---|
-| 0001 | fix(EDDI): null-safe consistency checks driven by the LLVM type of the values (bug 1) |
-| 0002 | fix(EDDI): re-synchronise the duplicated memory after calls to non-duplicated functions (bug 2) |
-| 0003 | fix(RASM, RACFED): check the signature in the verification blocks of EDDI (bug 3; the same code is in RACFED) |
-| 0004 | test: add the four applications to `testing/tests/c/applications/` and to `tests.toml` |
+| `patches/0001-...` | fix(RASM, RACFED): check the signature in the verification blocks of EDDI (Section 5.4; the same code is in RACFED) |
+| `patches/0002-...` | test: add the four applications to `testing/tests/c/applications/` and to `tests.toml` |
+| `bug_report.md` | the EDDI bug of Section 3.2, with the reproducer `reproducers/string_literal.c` |
 
-They apply with `git am` on `b66a090`. With them, `pytest test.py` runs our
-applications with the 55 combinations together with the existing tests, so
-that future changes of ASPIS are checked on them too. The patches have not
-been submitted yet.
+The patches were produced with `git format-patch` and apply with `git am`
+on `b66a090`. With them, `pytest test.py` runs our applications with the 55
+combinations together with the existing tests, so that future changes of
+ASPIS are checked on them too. Nothing has been submitted yet.
 
 # 7. Limitations
 
 - The fault models cover the general purpose registers and the conditional
   jumps only. Faults in the floating-point registers (used by `fft` and
   `pid_control`), in memory, and multiple faults are not injected.
-- The applications are small, and 1000 faults per application and
-  configuration give intervals of a few tenths of a percent on the SDC
-  rates.
+- 1000 faults per application and configuration give wide intervals on the
+  rates of single applications (for example 1.2-2.9% for the register SDC rate of `aes128`); the
+  pooled rates (4000 faults) are more precise.
 - We compare the cost with the executed instructions, not with the run
   time: the applications run for a few milliseconds, too little for precise
   time measurements.
 - The control-flow techniques work on the IR, so they cannot see the jumps
   created by the back-end, such as the one of the floating-point `select` in
   `pid_control` (Section 5.3); only data duplication catches them.
+- Our applications avoid the EDDI bug of Section 3.2 instead of fixing it, so
+  they do not test that part of EDDI; the reproducer should become a test
+  once the bug is fixed.
 
 # 8. Declaration on the use of large language models
 
-As allowed by the supervisors ("you can do whatever you want with AI, even
-the whole project, but you have to declare it"), this project was carried
+The supervisors allowed the use of AI tools ("you can do whatever you want
+with IA even the whole project"), asking to "declare in the final report
+whether you have used LLMs and for what purpose". This project was carried
 out with extensive use of an LLM-based coding agent, Claude (Anthropic),
 through Claude Code. The agent was used for:
 
@@ -468,8 +462,8 @@ through Claude Code. The agent was used for:
   scripts;
 - running the experiments: building LLVM and ASPIS, the test harness, the
   fault-injection campaign;
-- debugging ASPIS: isolating the failures, writing the reproducers, finding
-  the causes and writing the fixes;
+- debugging ASPIS: isolating the failures, writing the reproducer, finding
+  the causes, writing the fix of RASM and the bug report of EDDI;
 - writing this report, its tables and figures.
 
 The students defined the goals and the scope of the project, supervised the
@@ -481,11 +475,11 @@ report.
 | Path | Content |
 |---|---|
 | `benchmarks/` | the four applications |
-| `aspis-integration/` | the patches for ASPIS, the test entries, the two reproducers |
+| `aspis-integration/` | the patches for ASPIS, the test entries, the bug report and its reproducer |
 | `fault_injection/injector/fi.c` | the fault injector |
 | `fault_injection/campaign.py`, `campaign.toml` | the campaign |
 | `fault_injection/analyze.py`, `export.py` | tables and figures; copy of the results into the repository |
-| `fault_injection/sdc_sites.py` | where the SDCs happened (Section 5.4) |
+| `fault_injection/sdc_sites.py`, `check_jumps.py` | where the SDCs happened, and how many executed jumps belong to checks (Sections 5.3, 5.4) |
 | `results/` | logs of the harness, results of the campaign |
 | `report/` | this report (`report.md`, built by `build.py`) |
 
@@ -505,20 +499,24 @@ python3 <repo>/fault_injection/export.py <campaign output> <repo>/results/fault_
 # 4. tables, figures and this report
 python3 <repo>/fault_injection/analyze.py --campaign <repo>/results/fault_injection \
     --before <repo>/results/fault_injection/before_fix --out <repo>/report \
-    --harness master=<repo>/results/compatibility/harness_master.log.gz \
-    --harness fixed=<repo>/results/compatibility/harness_fixed.log.gz
+    --harness "first version, master=<repo>/results/compatibility/harness_master_first_version.log.gz" \
+    --harness "final, master=<repo>/results/compatibility/harness_master.log.gz" \
+    --harness "final, with patches=<repo>/results/compatibility/harness_fixed.log.gz"
 python3 <repo>/report/build.py
 ```
 
-The campaign takes about 25 minutes on a 4-core virtual
-machine. For the run without the RASM fix, build ASPIS with patches 0001 and
-0002 only and run the campaign with the EDDI+RASM configuration alone.
+The campaign takes about 20 minutes on a 4-core virtual
+machine. The run without the fix of RASM uses ASPIS `b66a090` without
+patches and the EDDI+RASM configuration alone. For the harness on the main
+branch, our entries are added with `pytest test.py --tests-file
+config/tests.toml <repo>/aspis-integration/flc_tests.toml`.
 
 # References
 
 1. D. Baroffio, F. Reghenzani, W. Fornaciari. *Enhanced Compiler Technology
    for Software-based Hardware Fault Detection*. ACM Transactions on Design
-   Automation of Electronic Systems 29(5), 2024. doi:10.1145/3660524.
+   Automation of Electronic Systems 29(5), article 91, 2024.
+   doi:10.1145/3660524.
 2. N. Oh, P. P. Shirvani, E. J. McCluskey. *Error detection by duplicated
    instructions in super-scalar processors*. IEEE Transactions on
    Reliability 51(1), 2002. doi:10.1109/24.994913.

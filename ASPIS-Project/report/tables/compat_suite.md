@@ -1,4 +1,4 @@
-| ASPIS tests | master | fixed |
+| ASPIS tests | final, master | final, with patches |
 |---|---:|---:|
 | passed | 2453 | 2453 |
 | failed | 33 | 33 |

@@ -18,6 +18,10 @@
  *   - float-to-int conversions (sensor quantisation)
  *   - data-dependent branches (saturation, anti-windup)
  *
+ * The results are printed with literal strings only, never with "%s" and a
+ * string chosen at run time: on ASPIS b66a090 that makes the programs
+ * hardened with EDDI crash (aspis-integration/reproducers/string_literal.c).
+ *
  * Copyright (c) 2026 Alberto Rotolo, Simone Rota
  * SPDX-License-Identifier: MIT
  */
@@ -147,6 +151,9 @@ int main(void) {
     printf("saturated steps %d, last settling %d steps\n", saturated_steps, settled_at);
     if (abs_f(motor.speed - sp) > 0.1f || settled_at < 0)
         ok = 0;
-    printf("%s\n", ok ? "SUCCESS" : "FAIL");
+    if (ok)
+        printf("SUCCESS\n");
+    else
+        printf("FAIL\n");
     return ok ? 0 : 1;
 }

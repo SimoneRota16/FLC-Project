@@ -13,7 +13,7 @@ Abbiamo lavorato sul commit `b66a090`, l'ultimo del branch principale quando
 | Percorso | Contenuto |
 |---|---|
 | `aspis.sh` | lo script che compila un programma applicando le protezioni |
-| `passes/EDDI.cpp` | EDDI e le sue varianti (sEDDI, FDSC, REDDI): circa 2000 righe |
+| `passes/EDDI.cpp` | EDDI e le sue varianti (sEDDI, FDSC, REDDI): circa 2400 righe |
 | `passes/FuncRetToRef.cpp` | trasforma i valori di ritorno in parametri puntatore |
 | `passes/DuplicateGlobals.cpp` | duplica le variabili globali |
 | `passes/CFCSS.cpp`, `RASM.cpp`, `RACFED.cpp` | le tecniche di controllo del flusso (inter-RASM è RASM compilato con un'opzione) |
@@ -129,7 +129,7 @@ funzione `addConsistencyChecks` (in `EDDI.cpp`):
    chiama `DataCorruption_Handler`.
 
 Questo è l'esempio del report: `int scale(int v) { return v * g; }`, con `g`
-globale, compilato con EDDI (e le nostre correzioni):
+globale, compilato con EDDI:
 
 ```llvm
 define void @scale_ret_dup(i32 %0, ptr %1, i32 %2, ptr %3) {
@@ -168,19 +168,22 @@ programma ed è stata duplicata), EDDI chiama quella, passando entrambe le
 copie degli argomenti. Se invece la funzione è esterna (`printf`, `memcpy`,
 `sin` della libreria C), non può essere duplicata: EDDI la chiama una volta
 sola con gli argomenti originali. Ma una funzione esterna può **scrivere**
-attraverso i puntatori che riceve (pensate a `memcpy(dst, src, n)` o
+attraverso i puntatori che riceve (pensate a `sprintf(buf, ...)` o
 `scanf`), aggiornando solo la copia originale dei dati. Per questo, dopo la
 chiamata, EDDI **risincronizza** la memoria: copia i valori puntati dagli
 argomenti dalla versione originale a quella duplicata. È la funzione
-`fixFuncValsPassedByReference`, dove stava il secondo bug.
+`fixFuncValsPassedByReference`, dove sta il bug di EDDI che abbiamo trovato
+(capitolo 8). (`memcpy`, `memset` e simili invece non sono chiamate esterne:
+nell'IR sono *intrinsic* di LLVM, che EDDI duplica come le altre
+istruzioni.)
 
 **I puntatori.** Le due copie di un puntatore possono legittimamente avere
 valori diversi: se `p` punta a `x`, la sua copia punta a `x_dup`. Quindi
 confrontare gli indirizzi non ha senso: EDDI confronta i **valori puntati**
 (`*p` con `*p_dup`), e se sono a loro volta puntatori scende ancora, fino a
 un valore non puntatore. Per sapere di che tipo è il valore puntato (con i
-puntatori opachi, vedi 2.6) usa i tipi dedotti da TypeDeductionAnalysis. È
-in questo codice (`comparePtrs` e `compareValues`) che stava il primo bug.
+puntatori opachi, vedi 2.6) usa i tipi dedotti da TypeDeductionAnalysis
+(funzioni `comparePtrs` e `compareValues`).
 
 ## 5.7 Le altre parti
 
@@ -231,4 +234,4 @@ VerificationBB2:                              ; blocco creato da EDDI per la sto
 
 Si vede bene l'intreccio delle due protezioni: il salto condizionale porta
 prima al controllo di RASM, poi al blocco `VerificationBB2` creato da EDDI.
-Nel capitolo 8 vedremo cosa succedeva prima della correzione del terzo bug.
+Nel capitolo 8 vedremo cosa succedeva prima della correzione del bug di RASM.

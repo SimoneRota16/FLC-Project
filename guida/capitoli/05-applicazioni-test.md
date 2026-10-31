@@ -26,7 +26,7 @@ caratteristiche del C mette alla prova.
 
 ## 6.2 `aes128.c`: cifratura AES-128
 
-315 righe, 645.680 istruzioni eseguite. Implementa l'algoritmo di
+329 righe, 645.668 istruzioni eseguite. Implementa l'algoritmo di
 cifratura a blocchi AES con chiave di 128 bit (standard FIPS-197):
 
 - calcola all'avvio le tabelle `sbox` e `inv_sbox` (la sostituzione di byte
@@ -40,13 +40,15 @@ cifratura a blocchi AES con chiave di 128 bit (standard FIPS-197):
   del testo cifrato.
 
 Stampa le tabelle e i risultati intermedi e finisce con `SUCCESS` se tutti i
-confronti tornano. La funzione `print_hex(const char *label, ...)` riceve
-un'etichetta come parametro e la stampa con `printf("%s", label)`: è
-proprio il caso che faceva andare in crash EDDI (capitolo 8).
+confronti tornano. Nella prima versione la funzione `print_hex` riceveva
+un'etichetta come parametro e la stampava con `printf("%s", label)`: era
+proprio il caso che faceva andare in crash EDDI (capitolo 8). Ora
+l'etichetta viene stampata da chi chiama `print_hex`, con una stringa
+letterale.
 
 ## 6.3 `fft.c`: trasformata di Fourier
 
-176 righe, 367.763 istruzioni. Calcola la FFT radix-2 (algoritmo di
+186 righe, 367.759 istruzioni. Calcola la FFT radix-2 (algoritmo di
 Cooley-Tukey iterativo) di un segnale di 256 campioni complessi in doppia
 precisione:
 
@@ -63,7 +65,7 @@ Usa la libreria matematica (`sin`, `cos`, `sqrt`), e infatti va compilato con
 
 ## 6.4 `huffman.c`: compressione di Huffman
 
-215 righe, 170.978 istruzioni. Comprime e decomprime un testo fisso con la
+225 righe, 170.974 istruzioni. Comprime e decomprime un testo fisso con la
 codifica di Huffman:
 
 - conta le frequenze dei caratteri;
@@ -81,11 +83,11 @@ cicli del heap hanno uscite che dipendono dai dati: tanti salti condizionali
 
 ## 6.5 `pid_control.c`: controllore PID
 
-152 righe, 477.393 istruzioni. Simula per 2000 passi di 10 ms un motore in
+159 righe, 477.391 istruzioni. Simula per 2000 passi di 10 ms un motore in
 corrente continua (modello del primo ordine) controllato da un **PID**:
 
 - il riferimento di velocità cambia a gradini (10, 25, 5, 15 rad/s);
-- a metà simulazione si applica un disturbo di coppia;
+- tra il passo 1200 e il 1300 si applica un disturbo di coppia;
 - il sensore di velocità è quantizzato come un encoder;
 - il PID ha la derivata filtrata, la saturazione dell'uscita a ±24 V e un
   meccanismo *anti-windup* (l'integrale viene aggiornato solo se aiuta a
@@ -143,55 +145,58 @@ flusso, tecnica dei dati, esito.
 
 Abbiamo aggiunto le quattro applicazioni in `testing/tests/c/applications/` e
 le loro voci in fondo a `tests.toml` (sono nel file
-`aspis-integration/flc_tests.toml`), poi abbiamo eseguito l'intera suite
-due volte:
+`aspis-integration/flc_tests.toml`), poi abbiamo eseguito l'intera suite tre
+volte (log in `results/compatibility/`):
 
-- sul branch principale di ASPIS (`b66a090`): log in
-  `results/compatibility/harness_master.log.gz`;
-- con le nostre tre correzioni: log in
-  `results/compatibility/harness_fixed.log.gz`.
+- con la **prima versione** delle applicazioni, sul branch principale di
+  ASPIS (`b66a090`): `harness_master_first_version.log.gz`;
+- con la **versione finale** delle applicazioni (quella che evita il bug di
+  EDDI), sul branch principale: `harness_master.log.gz`;
+- con la versione finale e le **nostre due patch** (la correzione di RASM e
+  le voci dei test): `harness_fixed.log.gz`.
 
-Ognuna delle due esecuzioni compila e prova 52 test × 55 combinazioni =
-2860 programmi e dura circa 9 minuti. Lo script `fault_injection/analyze.py`
-legge i log e produce le tabelle del report.
+Ognuna delle esecuzioni compila e prova 52 test × 55 combinazioni = 2860
+programmi e dura circa 9 minuti. Lo script `fault_injection/analyze.py` legge
+i log e produce le tabelle del report.
 
 ## 7.3 I risultati
 
 Le nostre applicazioni (4 applicazioni × 5 tecniche del flusso per ogni riga):
 
-| Protezione dei dati | `master` | con le correzioni |
-|---|---:|---:|
-| nessuna (`--no-dup`) | 20 / 20 | 20 / 20 |
-| EDDI, 4 varianti | 0 / 80 | 80 / 80 |
-| sEDDI | 0 / 20 | 20 / 20 |
-| FDSC | 0 / 20 | 20 / 20 |
-| REDDI, 4 varianti | 80 / 80 | 80 / 80 |
-| **totale** | **100 / 220** | **220 / 220** |
+| Protezione dei dati | prima versione, `master` | versione finale, `master` | versione finale, con le patch |
+|---|---:|---:|---:|
+| nessuna (`--no-dup`) | 20 / 20 | 20 / 20 | 20 / 20 |
+| EDDI, 4 varianti | 0 / 80 | 80 / 80 | 80 / 80 |
+| sEDDI | 0 / 20 | 20 / 20 | 20 / 20 |
+| FDSC | 0 / 20 | 20 / 20 | 20 / 20 |
+| REDDI, 4 varianti | 80 / 80 | 80 / 80 | 80 / 80 |
+| **totale** | **100 / 220** | **220 / 220** | **220 / 220** |
 
 Come si legge:
 
-- **le tecniche del flusso da sole funzionano** su tutte le applicazioni,
-  anche su `master` (riga `--no-dup`);
+- **le tecniche del flusso da sole funzionano** su tutte le applicazioni
+  (riga `--no-dup`);
 - **REDDI passa**, ma per un motivo banale: REDDI protegge solo ciò che è
-  annotato con `to_harden`, e le nostre applicazioni non hanno annotazioni,
-  quindi REDDI non protegge nulla;
-- **EDDI, sEDDI e FDSC vanno in crash su tutte e quattro le applicazioni**
-  (*segmentation fault*), con qualunque tecnica del flusso. Il capitolo 8
-  spiega perché;
-- con le correzioni passano tutte le 220 combinazioni.
+  annotato con `to_harden` (e quello che usa), e le nostre applicazioni non
+  hanno annotazioni, quindi REDDI non protegge nulla;
+- con la prima versione **EDDI, sEDDI e FDSC andavano in crash su tutte e
+  quattro le applicazioni** (*segmentation fault*), con qualunque tecnica del
+  flusso: è il bug di EDDI del capitolo 8;
+- con la versione finale, che evita quel bug, passano tutte le 220
+  combinazioni, sia su `master` sia con le nostre patch.
 
 I 48 test che ASPIS aveva già:
 
-| Esito | `master` | con le correzioni |
+| Esito | `master` | con le patch |
 |---|---:|---:|
 | passati | 2453 | 2453 |
 | falliti | 33 | 33 |
 | saltati | 154 | 154 |
 
-I risultati sono **identici**: le correzioni non rompono nulla (nessuna
-*regressione*). I 154 saltati sono le combinazioni nelle `black_list`. I 33
-falliti sono tutte le combinazioni non escluse di un solo test,
-`cpp_complex`, e falliscono anche su `master` già nel primo passo: il
+I risultati sono **identici**: la correzione di RASM non rompe nulla
+(nessuna *regressione*). I 154 saltati sono le combinazioni nelle
+`black_list`. I 33 falliti sono tutte le combinazioni non escluse di un solo
+test, `cpp_complex`, e falliscono anche su `master` già nel primo passo: il
 programma di riferimento non compila, perché il sorgente usa `std::powf`, che
 la libreria C++ della nostra macchina (libstdc++ 13) non dichiara. È un
 problema del test e dell'ambiente, non di ASPIS né delle nostre modifiche.

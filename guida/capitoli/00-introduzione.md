@@ -22,12 +22,13 @@ La guida è divisa in tre parti:
   compilatore e com'è fatto LLVM, cosa sono i guasti transitori e come si
   proteggono i programmi via software, quali tecniche implementa ASPIS.
 - **Parte II, il lavoro fatto** (capitoli 5-11): come si usa ASPIS, le
-  quattro applicazioni, i test, i tre bug trovati e corretti, l'iniettore di
+  quattro applicazioni, i test, i due bug trovati in ASPIS, l'iniettore di
   guasti, la campagna di fault injection e i suoi risultati.
-- **Parte III, pratica ed esame** (capitoli 12-17): come integrare il lavoro
+- **Parte III, pratica ed esame** (capitoli 12-18): come integrare il lavoro
   in ASPIS, come rifare tutti gli esperimenti, la mappa dei file, cosa è
-  stato tolto dalla prima versione, le domande probabili all'orale con le
-  risposte e un glossario.
+  stato tolto dalle versioni precedenti, cosa dire slide per slide nella
+  chiamata con i supervisori, le domande probabili all'orale con le risposte
+  e un glossario.
 
 Il consiglio è leggere i capitoli nell'ordine, con il repository aperto
 accanto: ogni volta che si parla di un file, il percorso è scritto in
@@ -60,8 +61,11 @@ ed Emilio Corigliano, del gruppo HEAPLab) ha tre obiettivi:
 
 I supervisori hanno anche scritto (file `Buongiorno,.txt` nella radice del
 repository) che si può usare l'intelligenza artificiale, anche per tutto il
-progetto, a patto di dichiararlo nel report, e che ci sarà una chiamata in
-cui si discuterà il lavoro usando il report come riferimento.
+progetto, a patto di dichiarare nel report se e per cosa la si è usata, che
+il numero di programmi da proteggere dipende dalla loro complessità (e se ne
+può discutere con loro), e che quando saremo pronti ci sarà una chiamata in
+cui spiegare loro il lavoro; il report servirà come riferimento per la
+valutazione.
 
 ## 1.2 Cosa è stato fatto
 
@@ -70,29 +74,31 @@ cui si discuterà il lavoro usando il report come riferimento.
   (FFT), compressione di Huffman, controllo PID della velocità di un motore.
 - **Test di compatibilità** con il sistema di test ufficiale di ASPIS, che
   compila ogni programma con 55 combinazioni di tecniche. Sul branch
-  principale di ASPIS funzionano solo 100 delle 220 combinazioni delle nostre
-  applicazioni: con EDDI, sEDDI e FDSC (le tecniche che duplicano tutto il
-  programma) le quattro applicazioni vanno in crash.
-- **Tre bug di ASPIS trovati e corretti**. Due sono in EDDI e causavano i
-  crash; il terzo è in RASM ed è stato scoperto grazie alla fault injection.
-  Con le correzioni tutte le 220 combinazioni funzionano e i 48 test che
-  ASPIS aveva già danno gli stessi risultati di prima.
+  principale di ASPIS la prima versione delle applicazioni funzionava solo in
+  100 delle 220 combinazioni: con EDDI, sEDDI e FDSC (le tecniche che
+  duplicano tutto il programma) le quattro applicazioni andavano in crash.
+- **Due bug di ASPIS trovati.** Il primo, in EDDI, causava i crash: lo
+  abbiamo isolato in un programma di cinque righe, descritto in un *bug
+  report* ed evitato nelle applicazioni, che ora funzionano in tutte le 220
+  combinazioni. Il secondo, in RASM, è stato scoperto grazie alla fault
+  injection e lo abbiamo corretto cambiando una riga; con la correzione i 48
+  test che ASPIS aveva già danno gli stessi risultati di prima.
 - **Un iniettore di guasti** scritto in C (`fault_injection/injector/fi.c`)
   che, usando la chiamata di sistema `ptrace` (quella dei debugger), ferma il
   programma in un istante casuale e inverte un bit di un registro oppure fa
   andare un salto condizionale dalla parte sbagliata.
 - **Una campagna di fault injection** di 56.000 esperimenti: 4 applicazioni,
   6 configurazioni di protezione, 2 modelli di guasto, 1000 guasti per
-  combinazione, più 8000 esperimenti per misurare l'effetto del terzo bug.
-- **Quattro patch** pronte per il repository ufficiale di ASPIS (le tre
-  correzioni e l'aggiunta dei test), non ancora inviate.
+  combinazione, più 8000 esperimenti per misurare l'effetto del bug di RASM.
+- **Due patch** pronte per il repository ufficiale di ASPIS (la correzione di
+  RASM e l'aggiunta dei test) e il bug report di EDDI, non ancora inviati.
 - **Il report** in inglese, con la dichiarazione sull'uso dell'AI.
 
 ## 1.3 Il messaggio principale dei risultati
 
 - **EDDI** (duplicazione dei dati) riduce drasticamente i risultati sbagliati
-  non rilevati causati da bit-flip nei registri, ma raddoppia abbondantemente
-  il costo: il programma esegue circa 3,8 volte le istruzioni.
+  non rilevati causati da bit-flip nei registri, ma quasi quadruplica il
+  costo: il programma esegue circa 3,7 volte le istruzioni.
 - EDDI **non vede** un salto condizionale andato dalla parte sbagliata,
   perché le due copie del calcolo seguono lo stesso salto. Lo vedono invece
   le tecniche di **controllo del flusso a firme**, ma non tutte: **RASM**
@@ -100,7 +106,7 @@ cui si discuterà il lavoro usando il report come riferimento.
   che il salto vada in un blocco "ammesso", non in quello giusto.
 - Combinare EDDI con RASM avrebbe dovuto dare il meglio dei due mondi, ma la
   fault injection ha mostrato che la combinazione rilevava i salti invertiti
-  **peggio** di RASM da solo: era il terzo bug, ora corretto.
+  **peggio** di RASM da solo: era il bug di RASM, ora corretto.
 
 I numeri precisi sono nel capitolo 11.
 
@@ -109,8 +115,8 @@ I numeri precisi sono nel capitolo 11.
 | Cartella o file | Contenuto |
 |---|---|
 | `ASPIS-Project/benchmarks/` | le quattro applicazioni |
-| `ASPIS-Project/aspis-integration/` | le quattro patch per ASPIS, le voci dei test, due programmi minimi che riproducono i bug |
-| `ASPIS-Project/fault_injection/` | l'iniettore (`injector/fi.c`), la campagna (`campaign.py`, `campaign.toml`), l'analisi (`analyze.py`, `export.py`) |
+| `ASPIS-Project/aspis-integration/` | le due patch per ASPIS, le voci dei test, il bug report di EDDI e il suo riproduttore |
+| `ASPIS-Project/fault_injection/` | l'iniettore (`injector/fi.c`), la campagna (`campaign.py`, `campaign.toml`), l'analisi (`analyze.py`, `export.py`, `sdc_sites.py`, `check_jumps.py`) |
 | `ASPIS-Project/results/` | i log dei test e i risultati della campagna |
 | `ASPIS-Project/report/` | il report (`report.md`, `report.pdf`) e lo script che lo genera |
 | `guida/` | questa guida (fuori dalla cartella del progetto) |
@@ -120,6 +126,10 @@ I numeri precisi sono nel capitolo 11.
 La prima versione del progetto era molto più grande: 22 programmi di test,
 23 bug corretti in ASPIS, un iniettore più sofisticato e una campagna di
 240.900 esperimenti. Era troppo per un progetto che vale il 30% di un esame
-da 5 CFU, quindi è stata ridotta a una dimensione realistica per due
-studenti. La versione completa non è andata persa: è nella storia di git,
-al commit `e1d7e8b`. Il capitolo 15 riassume cosa conteneva.
+da 5 CFU. Una seconda versione aveva già le quattro applicazioni attuali, ma
+correggeva ancora due bug dentro EDDI, con modifiche al codice C++ di LLVM
+difficili da studiare e da difendere all'orale. La versione attuale tiene
+solo la correzione di RASM, che è una riga, ed evita il bug di EDDI nelle
+applicazioni. Le versioni precedenti non sono andate perse: sono nella
+storia di git, ai commit `e1d7e8b` e `7074cd6`. Il capitolo 15 riassume cosa
+contenevano.

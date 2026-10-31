@@ -34,7 +34,7 @@ EDDI controlla nei **punti di sincronizzazione**, cioè dove un valore sbagliato
   funzione chiamata.
 
 **Costo.** Il programma esegue circa il doppio delle istruzioni, più i
-confronti e i salti dei controlli: nei nostri programmi EDDI esegue circa 3,8
+confronti e i salti dei controlli: nei nostri programmi EDDI esegue circa 3,7
 volte le istruzioni dell'originale (con `-O0`, dove ogni valore passa dallo
 stack, il costo relativo è più alto che con il codice ottimizzato).
 
@@ -54,8 +54,8 @@ EDDI non se ne accorge.
 |---|---|---|
 | `--eddi` | EDDI | duplica tutto, controlla prima di store, salti e chiamate |
 | `--seddi` | sEDDI (*selective EDDI*) | non controlla prima delle store: costa meno, rileva più tardi |
-| `--fdsc` | FDSC (*Full Duplication with Selective Checking*) | duplica tutto ma controlla solo in un sottoinsieme dei punti |
-| `--reddi` | REDDI | protegge solo le funzioni e le globali annotate con `to_harden` |
+| `--fdsc` | FDSC (*Full Duplication with Selective Checking*) | duplica tutto ma controlla solo nei basic block che hanno più predecessori |
+| `--reddi` | REDDI | protegge solo le funzioni e le globali annotate con `to_harden` e quello che usano (le funzioni che chiamano, per esempio) |
 | `--multiple-errbb` | | un blocco di errore separato per ogni controllo (utile per capire quale controllo è scattato) |
 | `--coarse-grained` | REPAIR | raggruppa le istruzioni duplicate dopo quelle originali, per allontanarle nel tempo |
 
@@ -181,4 +181,4 @@ controllo del flusso allo stesso programma (`--eddi --rasm`). La protezione
 dei dati viene applicata per prima, quella del flusso dopo, sul codice già
 duplicato: quindi anche i blocchi creati da EDDI per i suoi controlli
 ricevono firme e controlli di RASM. Proprio in questa interazione si
-nascondeva il terzo bug (capitolo 8).
+nascondeva il bug di RASM (capitolo 8).

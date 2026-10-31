@@ -35,17 +35,21 @@ def disassemble(prog):
     return insn, func, dict(zip(order, order[1:]))
 
 
+def text_base(prog):
+    """Address of the executable segment: pc_off in the results is relative to it."""
+    loads = [line.split() for line in subprocess.run(["readelf", "-lW", prog], capture_output=True,
+                                                     text=True).stdout.splitlines()
+             if line.strip().startswith("LOAD") and "R E" in line]
+    return int(loads[0][2], 16)
+
+
 def main():
     if len(sys.argv) not in (5, 6):
         sys.exit(__doc__)
     raw, campaign, app, conf = sys.argv[1:5]
     model = sys.argv[5] if len(sys.argv) == 6 else "branch"
     prog = "%s/build/%s/%s/prog" % (campaign, app, conf)
-    # pc_off is relative to the start of the executable segment
-    loads = [line.split() for line in subprocess.run(["readelf", "-lW", prog], capture_output=True,
-                                                     text=True).stdout.splitlines()
-             if line.strip().startswith("LOAD") and "R E" in line]
-    base = int(loads[0][2], 16)
+    base = text_base(prog)
     insn, func, nxt = disassemble(prog)
     with gzip.open(raw, "rt") as f:
         sites = collections.Counter(int(r["pc_off"], 16) + base for r in csv.DictReader(f)

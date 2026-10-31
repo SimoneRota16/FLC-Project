@@ -2,7 +2,8 @@
 
 All the experiments were run with LLVM 21.1.8 on x86-64 Linux (a 4-core
 virtual machine), with ASPIS `b66a090` ("master") and with the same commit
-plus the patches of `../aspis-integration/patches` ("fixed").
+plus the two patches of `../aspis-integration/patches` ("fixed": the RASM fix
+and the test entries).
 
 ## `compatibility/`
 
@@ -11,8 +12,9 @@ line per build: `test.py::test_aspis[<test>-<cfc>-<data>] PASSED`), gzipped:
 
 | File | ASPIS | Tests |
 |---|---|---|
+| `harness_master_first_version.log.gz` | master | the 48 tests of `tests.toml` and the first version of our 4 applications (commit `7074cd6` of this repository) |
 | `harness_master.log.gz` | master | the 48 tests of `tests.toml` and our 4 applications |
-| `harness_fixed.log.gz` | fixed (patches 0001-0004) | the same |
+| `harness_fixed.log.gz` | fixed (patches 0001-0002) | the same |
 
 `../fault_injection/analyze.py --harness` turns them into the tables of
 Section 3 of the report.
@@ -32,4 +34,4 @@ Output of `../fault_injection/campaign.py`, exported with `export.py`:
   register or condition code, `bit`, `injected`, `outcome`, `exit` status,
   `signal`, `time_us`);
 - `before_fix/`: the same files for EDDI+RASM compiled with ASPIS without
-  patch 0003 (bug 3 of the report).
+  patch 0001 (the RASM bug of the report).
